@@ -1,0 +1,92 @@
+[tool.poetry]
+name = "fautil"
+version = "0.1.0"
+description = "基础框架库"
+authors = ["alpha <alphaqiu@gmail.com>"]
+readme = "README.md"
+packages = [{include = "fautil"}]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<4.0"
+fastapi = ">=0.115.9,<0.116.0"
+sqlalchemy = {extras = ["asyncio"], version = ">=2.0.38,<3.0.0"}
+aiokafka = ">=0.12.0,<0.13.0"
+pydantic = ">=2.0.0,<3.0.0"
+pydantic-settings = ">=2.0.0,<3.0.0"
+injector = ">=0.21.0,<0.22.0"
+pyjwt = ">=2.8.0,<3.0.0"
+redis = {extras = ["hiredis"], version = ">=5.0.0,<6.0.0"}
+alembic = ">=1.12.0,<2.0.0"
+pyyaml = ">=6.0.0,<7.0.0"
+python-multipart = ">=0.0.6,<0.0.7"
+click = ">=8.1.7,<9.0.0"
+minio = ">=7.2.0,<8.0.0"
+toml = ">=0.10.2,<0.11.0"
+
+[tool.poetry.group.dev.dependencies]
+uvicorn = ">=0.34.0,<0.35.0"
+pytest = ">=8.0.0,<9.0.0"
+pytest-asyncio = ">=0.23.5,<0.24.0"
+black = ">=24.2.0,<25.0.0"
+isort = ">=5.13.0,<6.0.0"
+mypy = ">=1.8.0,<2.0.0"
+flake8 = ">=7.1.2,<8.0.0"
+setuptools-scm = ">=8.0.0,<9.0.0"
+build = ">=1.0.0,<2.0.0"
+twine = ">=4.0.0,<5.0.0"
+toml = "^0.10.2"
+pre-commit = ">=3.5.0,<4.0.0"
+
+[tool.poetry.scripts]
+fautil = "fautil.cli.main:main"
+
+[build-system]
+requires = [
+    "poetry-core>=2.0.0,<3.0.0",
+    "setuptools>=69.0.0",
+    "setuptools-scm>=8.0.0",
+    "wheel>=0.42.0"
+]
+build-backend = "poetry.core.masonry.api"
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "node-and-date"
+write_to = "fautil/_version.py"
+write_to_template = """
+# 版本信息由setuptools-scm自动生成，请勿手动修改
+__version__ = "{version}"
+"""
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | _build
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+skip_gitignore = true
+ensure_newline_before_comments = true
+# 保持跨平台一致性，统一使用LF
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true

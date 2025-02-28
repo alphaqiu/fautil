@@ -1,0 +1,38 @@
+{
+  "environment": {
+    "repository_type": "monorepo",
+    "package_manager": "poetry",
+    "python_version": ">=3.9,<4.0"
+  },
+  "commands": {
+    "install_all": "for d in packages/*/ apps/*/; do cd $d && poetry install && cd -; done",
+    "test_all": "for d in packages/*/ apps/*/; do cd $d && poetry run pytest && cd -; done",
+    "lint_all": "for d in packages/*/ apps/*/; do cd $d && poetry run pre-commit run --all-files && cd -; done",
+    "build_all": "for d in packages/*/; do cd $d && poetry build && cd -; done",
+    "update_deps_all": "for d in packages/*/ apps/*/; do cd $d && poetry update && cd -; done",
+    "clean_all": "find . -type d -name \"__pycache__\" -exec rm -rf {} +; find . -type d -name \".pytest_cache\" -exec rm -rf {} +; find . -type d -name \"*.egg-info\" -exec rm -rf {} +; find . -type d -name \"build\" -exec rm -rf {} +; find . -type d -name \"dist\" -exec rm -rf {} +",
+    "setup_workspaces": "poetry self add poetry-monorepo-plugin && poetry monorepo init"
+  },
+  "workspace_structure": {
+    "packages": {
+      "description": "共享库目录",
+      "path": "./packages",
+      "package_patterns": ["*/pyproject.toml"]
+    },
+    "apps": {
+      "description": "应用目录",
+      "path": "./apps",
+      "package_patterns": ["*/pyproject.toml"]
+    },
+    "tools": {
+      "description": "工具目录",
+      "path": "./tools",
+      "package_patterns": ["*/pyproject.toml"]
+    }
+  },
+  "dependency_management": {
+    "shared_dependencies": ["pydantic", "typing-extensions"],
+    "dev_dependencies": ["pytest", "black", "isort", "mypy", "pre-commit"],
+    "lock_strategy": "per_package"
+  }
+} 

@@ -1,0 +1,30 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace  # 删除行尾空白
+      - id: end-of-file-fixer    # 确保文件以换行符结束
+      - id: mixed-line-ending    # 修复混合行结束符
+        args: ['--fix=lf']       # 统一使用LF
+      - id: check-yaml           # 检查YAML文件
+      - id: check-toml           # 检查TOML文件
+      - id: check-json           # 检查JSON文件
+      - id: check-added-large-files  # 检查大文件
+
+  - repo: https://github.com/psf/black
+    rev: 24.2.0
+    hooks:
+      - id: black
+        language_version: python3
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ['--profile', 'black']
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        additional_dependencies: [flake8-docstrings] 

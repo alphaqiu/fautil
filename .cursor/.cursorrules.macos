@@ -1,0 +1,45 @@
+{
+  "environment": {
+    "os": "macos",
+    "os_version": "latest",
+    "shell": "zsh",
+    "terminal": "terminal"
+  },
+  "commands": {
+    "install_dependencies": "poetry install",
+    "run_dev": "poetry run python -m fautil.main",
+    "test": "poetry run pytest",
+    "lint": "poetry run flake8",
+    "format": "poetry run black .",
+    "activate_venv": "poetry shell",
+    "build_package": "poetry build",
+    "build_package_setuptools": "poetry run python -m build",
+    "publish_package": "poetry publish",
+    "publish_with_twine": "poetry run twine upload dist/*",
+    "create_version_tag": "git tag -a v$(poetry run python -c \"from fautil import __version__; print(__version__)\") -m \"Release $(poetry run python -c \"from fautil import __version__; print(__version__)\")\"",
+    "sync_version": "poetry run python -m fautil.update_version",
+    "build_with_git_version": "poetry run python -m fautil.update_version && poetry build"
+  },
+  "shell_adaptations": {
+    "file_operations": {
+      "create_directory": "mkdir -p $directory",
+      "remove_directory": "rm -rf $directory",
+      "copy_file": "cp -f $source $destination",
+      "move_file": "mv -f $source $destination"
+    },
+    "environment_variables": {
+      "set": "export VARIABLE_NAME='value'",
+      "get": "$VARIABLE_NAME"
+    },
+    "process_management": {
+      "background_process": "$command &",
+      "kill_process": "pkill $process_name"
+    }
+  },
+  "editor_settings": {
+    "tab_size": 4,
+    "insert_spaces": true,
+    "default_encoding": "utf-8",
+    "line_endings": "lf"
+  }
+} 

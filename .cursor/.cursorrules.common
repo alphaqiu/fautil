@@ -1,0 +1,85 @@
+{
+  "repository_types": {
+    "library": {
+      "description": "Python库项目",
+      "directories": ["fautil"],
+      "commands": {
+        "test": "poetry run pytest",
+        "lint": "poetry run pre-commit run --all-files",
+        "build": "poetry build",
+        "publish": "poetry publish"
+      }
+    },
+    "application": {
+      "description": "应用项目",
+      "directories": ["app", "frontend"],
+      "commands": {
+        "dev": "poetry run uvicorn app.main:app --reload",
+        "test": "poetry run pytest",
+        "lint": "poetry run pre-commit run --all-files",
+        "build_frontend": "cd frontend && npm run build",
+        "migrate": "poetry run alembic upgrade head"
+      }
+    },
+    "monorepo": {
+      "description": "复合仓库",
+      "directories": ["packages", "apps"],
+      "commands": {
+        "test_all": "for d in packages/*/ apps/*/; do cd $d && poetry run pytest && cd -; done",
+        "lint_all": "for d in packages/*/ apps/*/; do cd $d && poetry run pre-commit run --all-files && cd -; done"
+      }
+    }
+  },
+  "global_rules": {
+    "line_ending": "LF",
+    "encoding": "UTF-8",
+    "python_version": ">=3.9,<4.0",
+    "max_line_length": 88
+  },
+  "editor_settings": {
+    "tab_size": 4,
+    "insert_spaces": true,
+    "rulers": [88],
+    "files_to_exclude": [
+      "**/.git",
+      "**/__pycache__",
+      "**/.pytest_cache",
+      "**/node_modules",
+      "**/.venv",
+      "**/venv",
+      "build",
+      "dist",
+      "*.egg-info"
+    ],
+    "search_exclude": [
+      "**/.git",
+      "**/__pycache__",
+      "**/.pytest_cache",
+      "**/node_modules",
+      "**/.venv",
+      "**/venv",
+      "build",
+      "dist"
+    ]
+  },
+  "custom_tools": {
+    "update_deps": {
+      "description": "更新所有依赖到最新版本",
+      "windows": "poetry update",
+      "macos": "poetry update",
+      "linux": "poetry update"
+    },
+    "export_reqs": {
+      "description": "导出requirements.txt",
+      "windows": "poetry export -f requirements.txt --output requirements.txt",
+      "macos": "poetry export -f requirements.txt --output requirements.txt",
+      "linux": "poetry export -f requirements.txt --output requirements.txt"
+    },
+    "setup_project": {
+      "description": "首次设置项目",
+      "windows": "poetry install && poetry run pre-commit install",
+      "macos": "poetry install && poetry run pre-commit install",
+      "linux": "poetry install && poetry run pre-commit install"
+    }
+  }
+} 

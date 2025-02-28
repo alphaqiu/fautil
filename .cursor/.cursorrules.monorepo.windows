@@ -1,0 +1,40 @@
+{
+  "environment": {
+    "repository_type": "monorepo",
+    "package_manager": "poetry",
+    "python_version": ">=3.9,<4.0",
+    "os": "windows",
+    "shell": "powershell"
+  },
+  "commands": {
+    "install_all": "Get-ChildItem -Path packages,apps -Directory | ForEach-Object { Push-Location $_.FullName; poetry install; Pop-Location }",
+    "test_all": "Get-ChildItem -Path packages,apps -Directory | ForEach-Object { Push-Location $_.FullName; poetry run pytest; Pop-Location }",
+    "lint_all": "Get-ChildItem -Path packages,apps -Directory | ForEach-Object { Push-Location $_.FullName; poetry run pre-commit run --all-files; Pop-Location }",
+    "build_all": "Get-ChildItem -Path packages -Directory | ForEach-Object { Push-Location $_.FullName; poetry build; Pop-Location }",
+    "update_deps_all": "Get-ChildItem -Path packages,apps -Directory | ForEach-Object { Push-Location $_.FullName; poetry update; Pop-Location }",
+    "clean_all": "Get-ChildItem -Path . -Include '__pycache__','.pytest_cache','*.egg-info','build','dist' -Recurse -Directory | Remove-Item -Recurse -Force",
+    "setup_workspaces": "poetry self add poetry-monorepo-plugin; poetry monorepo init"
+  },
+  "workspace_structure": {
+    "packages": {
+      "description": "共享库目录",
+      "path": ".\\packages",
+      "package_patterns": ["*\\pyproject.toml"]
+    },
+    "apps": {
+      "description": "应用目录",
+      "path": ".\\apps",
+      "package_patterns": ["*\\pyproject.toml"]
+    },
+    "tools": {
+      "description": "工具目录",
+      "path": ".\\tools",
+      "package_patterns": ["*\\pyproject.toml"]
+    }
+  },
+  "dependency_management": {
+    "shared_dependencies": ["pydantic", "typing-extensions"],
+    "dev_dependencies": ["pytest", "black", "isort", "mypy", "pre-commit"],
+    "lock_strategy": "per_package"
+  }
+} 

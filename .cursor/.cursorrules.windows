@@ -1,0 +1,45 @@
+{
+  "environment": {
+    "os": "windows",
+    "os_version": "11",
+    "shell": "powershell",
+    "terminal": "windows_terminal"
+  },
+  "commands": {
+    "install_dependencies": "poetry install",
+    "run_dev": "poetry run python -m fautil.main",
+    "test": "poetry run pytest",
+    "lint": "poetry run flake8",
+    "format": "poetry run black .",
+    "activate_venv": "Invoke-Expression (poetry env activate)",
+    "build_package": "poetry build",
+    "build_package_setuptools": "poetry run python -m build",
+    "publish_package": "poetry publish",
+    "publish_with_twine": "poetry run twine upload dist/*",
+    "create_version_tag": "git tag -a v$(poetry run python -c \"from fautil import __version__; print(__version__)\") -m \"Release $(poetry run python -c \"from fautil import __version__; print(__version__)\")\"",
+    "sync_version": "poetry run python -m fautil.update_version",
+    "build_with_git_version": "poetry run python -m fautil.update_version && poetry build"
+  },
+  "powershell_adaptations": {
+    "file_operations": {
+      "create_directory": "mkdir -Force $directory",
+      "remove_directory": "Remove-Item -Recurse -Force $directory",
+      "copy_file": "Copy-Item -Path $source -Destination $destination -Force",
+      "move_file": "Move-Item -Path $source -Destination $destination -Force"
+    },
+    "environment_variables": {
+      "set": "$env:VARIABLE_NAME = 'value'",
+      "get": "$env:VARIABLE_NAME"
+    },
+    "process_management": {
+      "background_process": "Start-Process -NoNewWindow -FilePath $command",
+      "kill_process": "Stop-Process -Name $process_name -Force"
+    }
+  },
+  "editor_settings": {
+    "tab_size": 4,
+    "insert_spaces": true,
+    "default_encoding": "utf-8",
+    "line_endings": "crlf"
+  }
+} 

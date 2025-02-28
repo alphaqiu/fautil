@@ -1,0 +1,36 @@
+# 设置默认行为，如果core.autocrlf未设置，则自动规范化行尾
+* text=auto
+
+# 明确声明应该规范化的文本文件
+*.py text
+*.md text
+*.toml text
+*.yaml text
+*.yml text
+*.json text
+*.ini text
+*.cfg text
+*.txt text
+*.html text
+*.css text
+*.js text
+
+# 声明二进制文件，不应该被修改
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.pdf binary
+
+# 特殊处理Windows批处理文件，确保在Windows上使用CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 特殊处理Unix脚本，确保在Unix系统上使用LF
+*.sh text eol=lf
+
+# 特殊处理Python虚拟环境脚本
+/venv/** text eol=lf 
