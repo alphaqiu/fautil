@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import Any, ClassVar, Dict, Optional, cast
 
-from sqlalchemy import MetaData, DateTime, String, Table
+from sqlalchemy import DateTime, MetaData, String, Table
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -42,17 +42,17 @@ class Base(AsyncAttrs, DeclarativeBase):
     )
 
 
-class CustomMeta(DeclarativeMeta):
+class CustomMeta(type):
     """
     自定义元类，用于支持表前缀功能
     """
 
     def __new__(
-        mcs: type[DeclarativeMeta],
+        mcs: type,
         name: str,
         bases: tuple[type, ...],
         namespace: dict[str, Any],
-    ) -> DeclarativeMeta:
+    ) -> type:
         # 获取表名
         tablename = namespace.get("__tablename__")
 
@@ -70,7 +70,12 @@ class CustomMeta(DeclarativeMeta):
         return super().__new__(mcs, name, bases, namespace)
 
 
-class BaseMeta(Base.__class__, CustomMeta):
+# 获取Base的元类
+DeclarativeAttributeIntercept = Base.__class__
+
+
+# 创建一个正确的元类继承顺序
+class BaseMeta(CustomMeta, DeclarativeAttributeIntercept):
     """
     结合Base的元类和自定义元类
     """

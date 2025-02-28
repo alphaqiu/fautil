@@ -10,3 +10,6 @@ try:
 except ImportError:
     # 如果_version.py不存在（例如在开发环境中初次克隆后），使用默认版本
     __version__ = "0.0.0.dev0"
+
+# 导出主要模块
+from fautil import cache, cli, core, db, messaging, scheduler, storage, utils, web

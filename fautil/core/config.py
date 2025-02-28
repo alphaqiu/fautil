@@ -11,12 +11,12 @@ import os
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Type, TypeVar, Union, cast
+from typing import Any, Dict, List, Optional, Type, TypeVar
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, BaseSettings, Field
-from pydantic_settings import BaseSettings as PydanticBaseSettings
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
 
@@ -188,9 +188,7 @@ class LogConfig(BaseModel):
     """日志配置"""
 
     level: LogLevel = LogLevel.INFO
-    format: str = (
-        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
-    )
+    format: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
     file_path: Optional[str] = None
     rotation: str = "20 MB"
     retention: str = "1 week"
@@ -273,7 +271,7 @@ class AppConfig(BaseModel):
     log_level: LogLevel = LogLevel.INFO
 
 
-class Settings(PydanticBaseSettings):
+class Settings(BaseSettings):
     """应用设置"""
 
     app: AppConfig = Field(default_factory=AppConfig)
@@ -283,9 +281,7 @@ class Settings(PydanticBaseSettings):
     minio: Optional[MinioConfig] = None
     log: LogConfig = Field(default_factory=LogConfig)
 
-    class Config:
-        env_nested_delimiter = "__"
-        case_sensitive = False
+    model_config = {"env_nested_delimiter": "__", "case_sensitive": False}
 
     @property
     def is_debug(self) -> bool:

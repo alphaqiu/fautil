@@ -7,7 +7,13 @@
 from fautil.core.app import Application, create_app
 from fautil.core.config import Settings, load_settings
 from fautil.core.events import Event, EventBus, post, post_async, register
-from fautil.core.exceptions import APIError, ErrorCode, ErrorDetail
+from fautil.core.exceptions import (
+    AppException,
+    ForbiddenError,
+    NotFoundError,
+    UnauthorizedError,
+    ValidationError,
+)
 from fautil.core.logging import get_logger, setup_logging
 
 __all__ = [
@@ -20,9 +26,11 @@ __all__ = [
     "post",
     "post_async",
     "register",
-    "APIError",
-    "ErrorCode",
-    "ErrorDetail",
     "get_logger",
     "setup_logging",
+    "AppException",
+    "NotFoundError",
+    "ValidationError",
+    "UnauthorizedError",
+    "ForbiddenError",
 ]

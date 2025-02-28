@@ -10,7 +10,7 @@ import uuid
 from collections import deque
 from enum import Enum
 from threading import RLock
-from typing import Any, Callable, Dict, List, Optional, Set, Type, Union, cast, Deque
+from typing import Any, Callable, Deque, Dict, List, Optional, Set
 
 from pydantic import BaseModel
 
@@ -36,8 +36,7 @@ class LocalMessage(BaseModel):
     data: Dict[str, Any]
     created_at: float
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class LocalQueue:

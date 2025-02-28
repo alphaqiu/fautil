@@ -5,7 +5,7 @@
 """
 
 import logging
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse

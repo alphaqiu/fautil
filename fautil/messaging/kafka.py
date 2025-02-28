@@ -5,16 +5,13 @@ Kafka消息队列模块
 """
 
 import asyncio
-import functools
 import json
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Type, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Set
 
-import aiokafka
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-from confluent_kafka import Consumer, Producer, KafkaError
 from pydantic import BaseModel
 
 from fautil.core.config import KafkaConfig
@@ -45,14 +42,13 @@ class Message(BaseModel):
     max_retries: int = 3  # 最大重试次数
     created_at: Optional[float] = None  # 创建时间
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class KafkaProducer:
     """Kafka生产者
 
-    提供同步和异步消息发布功能
+    提供异步消息发布功能
     """
 
     def __init__(self, config: KafkaConfig):
@@ -64,72 +60,43 @@ class KafkaProducer:
         self.config = config
 
         # 异步生产者
-        self._async_producer: Optional[AIOKafkaProducer] = None
-
-        # 同步生产者
-        self._producer: Optional[Producer] = None
+        self._producer: Optional[AIOKafkaProducer] = None
 
         # 线程池
         self._executor = ThreadPoolExecutor(max_workers=4)
 
         logger.debug(f"创建Kafka生产者，服务器: {config.bootstrap_servers}")
 
-    async def connect_async(self) -> AIOKafkaProducer:
-        """连接到Kafka（异步）
+    async def connect(self) -> AIOKafkaProducer:
+        """连接到Kafka
 
         Returns:
-            AIOKafkaProducer: 异步Kafka生产者
+            AIOKafkaProducer: Kafka生产者
         """
-        if self._async_producer is None:
-            self._async_producer = AIOKafkaProducer(
+        if self._producer is None:
+            self._producer = AIOKafkaProducer(
                 bootstrap_servers=self.config.bootstrap_servers,
-                client_id=self.config.client_id,
+                client_id=self.config.client_id or f"fautil-producer-{uuid.uuid4()}",
                 enable_idempotence=True,
                 compression_type="gzip",
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                 key_serializer=lambda k: k.encode("utf-8") if k else None,
             )
-            await self._async_producer.start()
-            logger.debug("已连接到Kafka服务器（异步）")
-        return self._async_producer
-
-    def connect(self) -> Producer:
-        """连接到Kafka（同步）
-
-        Returns:
-            Producer: 同步Kafka生产者
-        """
-        if self._producer is None:
-            self._producer = Producer(
-                {
-                    "bootstrap.servers": self.config.bootstrap_servers,
-                    "client.id": self.config.client_id
-                    or f"fautil-producer-{uuid.uuid4()}",
-                    "enable.idempotence": True,
-                    "compression.type": "gzip",
-                }
-            )
-            logger.debug("已连接到Kafka服务器（同步）")
+            await self._producer.start()
+            logger.debug("已连接到Kafka服务器")
         return self._producer
 
-    async def close_async(self) -> None:
-        """关闭Kafka连接（异步）"""
-        if self._async_producer:
-            await self._async_producer.stop()
-            self._async_producer = None
-            logger.debug("已关闭Kafka连接（异步）")
-
-    def close(self) -> None:
-        """关闭Kafka连接（同步）"""
+    async def close(self) -> None:
+        """关闭Kafka连接"""
         if self._producer:
-            self._producer.flush()
+            await self._producer.stop()
             self._producer = None
-            logger.debug("已关闭Kafka连接（同步）")
+            logger.debug("已关闭Kafka连接")
 
-    async def send_async(
+    async def send(
         self, topic: str, value: Dict[str, Any], key: Optional[str] = None
     ) -> Message:
-        """发送消息（异步）
+        """发送消息
 
         Args:
             topic: 主题
@@ -149,7 +116,7 @@ class KafkaProducer:
         )
 
         # 连接到Kafka
-        producer = await self.connect_async()
+        producer = await self.connect()
 
         # 发送消息
         try:
@@ -167,10 +134,10 @@ class KafkaProducer:
 
         return message
 
-    def send(
+    async def send_sync(
         self, topic: str, value: Dict[str, Any], key: Optional[str] = None
     ) -> Message:
-        """发送消息（同步）
+        """同步方式发送消息（在asyncio环境中调用异步方法）
 
         Args:
             topic: 主题
@@ -180,52 +147,7 @@ class KafkaProducer:
         Returns:
             Message: 消息对象
         """
-        # 创建消息对象
-        message = Message(
-            id=str(uuid.uuid4()),
-            topic=topic,
-            key=key,
-            data=value,
-        )
-
-        # 连接到Kafka
-        producer = self.connect()
-
-        # 序列化消息
-        serialized_value = json.dumps(message.dict()).encode("utf-8")
-        serialized_key = key.encode("utf-8") if key else None
-
-        # 发送消息
-        try:
-            producer.produce(
-                topic=topic,
-                value=serialized_value,
-                key=serialized_key,
-                callback=self._delivery_callback,
-            )
-            producer.poll(0)  # 触发回调
-            message.status = MessageStatus.PROCESSING
-            logger.debug(f"已异步发送消息到主题 {topic}, ID: {message.id}")
-        except Exception as e:
-            message.status = MessageStatus.FAILED
-            logger.error(f"发送消息失败: {e}")
-            raise
-
-        return message
-
-    def _delivery_callback(self, err, msg) -> None:
-        """消息发送回调
-
-        Args:
-            err: 错误信息
-            msg: 消息对象
-        """
-        if err:
-            logger.error(f"消息发送失败: {err}")
-        else:
-            logger.debug(
-                f"消息已发送到 {msg.topic()} [{msg.partition()}] @ {msg.offset()}"
-            )
+        return await self.send(topic, value, key)
 
 
 class KafkaConsumer:
@@ -243,10 +165,7 @@ class KafkaConsumer:
         self.config = config
 
         # 异步消费者
-        self._async_consumer: Optional[AIOKafkaConsumer] = None
-
-        # 同步消费者
-        self._consumer: Optional[Consumer] = None
+        self._consumer: Optional[AIOKafkaConsumer] = None
 
         # 消息处理器
         self._handlers: Dict[str, List[Callable]] = {}
@@ -261,17 +180,17 @@ class KafkaConsumer:
             f"创建Kafka消费者，服务器: {config.bootstrap_servers}, 组ID: {config.group_id}"
         )
 
-    async def connect_async(self, topics: List[str]) -> AIOKafkaConsumer:
-        """连接到Kafka（异步）
+    async def connect(self, topics: List[str]) -> AIOKafkaConsumer:
+        """连接到Kafka
 
         Args:
             topics: 要订阅的主题列表
 
         Returns:
-            AIOKafkaConsumer: 异步Kafka消费者
+            AIOKafkaConsumer: Kafka消费者
         """
-        if self._async_consumer is None:
-            self._async_consumer = AIOKafkaConsumer(
+        if self._consumer is None:
+            self._consumer = AIOKafkaConsumer(
                 *topics,
                 bootstrap_servers=self.config.bootstrap_servers,
                 group_id=self.config.group_id,
@@ -279,38 +198,15 @@ class KafkaConsumer:
                 enable_auto_commit=self.config.enable_auto_commit,
                 value_deserializer=lambda v: json.loads(v.decode("utf-8")),
                 key_deserializer=lambda k: k.decode("utf-8") if k else None,
+                session_timeout_ms=self.config.session_timeout_ms,
+                heartbeat_interval_ms=self.config.heartbeat_interval_ms,
             )
-            await self._async_consumer.start()
-            logger.debug(f"已连接到Kafka服务器（异步），订阅主题: {topics}")
-        return self._async_consumer
-
-    def connect(self, topics: List[str]) -> Consumer:
-        """连接到Kafka（同步）
-
-        Args:
-            topics: 要订阅的主题列表
-
-        Returns:
-            Consumer: 同步Kafka消费者
-        """
-        if self._consumer is None:
-            self._consumer = Consumer(
-                {
-                    "bootstrap.servers": self.config.bootstrap_servers,
-                    "group.id": self.config.group_id,
-                    "auto.offset.reset": self.config.auto_offset_reset,
-                    "enable.auto.commit": self.config.enable_auto_commit,
-                    "max.poll.interval.ms": self.config.session_timeout_ms,
-                    "session.timeout.ms": self.config.session_timeout_ms,
-                    "heartbeat.interval.ms": self.config.heartbeat_interval_ms,
-                }
-            )
-            self._consumer.subscribe(topics)
-            logger.debug(f"已连接到Kafka服务器（同步），订阅主题: {topics}")
+            await self._consumer.start()
+            logger.debug(f"已连接到Kafka服务器，订阅主题: {topics}")
         return self._consumer
 
-    async def close_async(self) -> None:
-        """关闭Kafka连接（异步）"""
+    async def close(self) -> None:
+        """关闭Kafka连接"""
         self._running = False
 
         # 等待所有任务完成
@@ -319,17 +215,10 @@ class KafkaConsumer:
             self._tasks.clear()
 
         # 关闭消费者
-        if self._async_consumer:
-            await self._async_consumer.stop()
-            self._async_consumer = None
-            logger.debug("已关闭Kafka连接（异步）")
-
-    def close(self) -> None:
-        """关闭Kafka连接（同步）"""
         if self._consumer:
-            self._consumer.close()
+            await self._consumer.stop()
             self._consumer = None
-            logger.debug("已关闭Kafka连接（同步）")
+            logger.debug("已关闭Kafka连接")
 
     def register_handler(self, topic: str, handler: Callable) -> None:
         """注册消息处理器
@@ -359,7 +248,7 @@ class KafkaConsumer:
             return
 
         # 连接到Kafka
-        consumer = await self.connect_async(topics)
+        consumer = await self.connect(topics)
 
         # 创建消费任务
         task = asyncio.create_task(self._consume_loop())
@@ -372,7 +261,7 @@ class KafkaConsumer:
         """消息消费循环"""
         try:
             # 异步迭代消息
-            async for msg in self._async_consumer:
+            async for msg in self._consumer:
                 if not self._running:
                     break
 

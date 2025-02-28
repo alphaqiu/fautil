@@ -5,10 +5,9 @@
 """
 
 import asyncio
-import inspect
 import threading
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Set, Type, TypeVar, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Type
 
 from loguru import logger
 
@@ -255,6 +254,10 @@ def register(
         return func
 
     return decorator
+
+
+# 添加subscribe作为register的别名
+subscribe = register
 
 
 def post(event: Event) -> bool:

@@ -5,7 +5,6 @@
 """
 
 import inspect
-from enum import Enum
 from typing import (
     Any,
     Callable,
@@ -13,17 +12,14 @@ from typing import (
     List,
     Optional,
     Set,
-    Tuple,
     Type,
     TypeVar,
     cast,
-    get_type_hints,
 )
 
 from fastapi import APIRouter, Depends, FastAPI, params
-from fastapi.datastructures import Default
 from fastapi.routing import APIRoute
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel
 
 T = TypeVar("T", bound="APIView")
 
@@ -200,7 +196,7 @@ class APIView:
         """
         for route_info in cls._routes:
             # 创建路由处理函数
-            async def create_endpoint(route_info: Dict[str, Any]) -> Callable[..., Any]:
+            def create_endpoint(route_info: Dict[str, Any]) -> Callable[..., Any]:
                 async def endpoint(*args: Any, **kwargs: Any) -> Any:
                     # 创建实例
                     instance = cls()
