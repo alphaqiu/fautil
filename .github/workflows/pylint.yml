@@ -52,7 +52,7 @@ jobs:
 
     - name: Upload badge artifact
       if: matrix.python-version == '3.9' && github.event_name == 'push' && github.ref == 'refs/heads/master'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: pylint-badge
         path: pylint_badge.svg
