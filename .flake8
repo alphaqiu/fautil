@@ -1,0 +1,5 @@
+[flake8]
+max-line-length = 100
+exclude = .git,__pycache__,build,dist,.venv,venv
+# E203和W503与Black的格式化冲突，需要忽略
+extend-ignore = E203, W503 

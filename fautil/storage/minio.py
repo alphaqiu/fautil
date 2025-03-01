@@ -7,11 +7,9 @@ MinIO对象存储模块
 import asyncio
 import io
 import os
-import tempfile
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, BinaryIO, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, BinaryIO, Dict, List, Optional, Union
 
-import minio
 from minio import Minio
 from minio.commonconfig import CopySource
 from minio.deleteobjects import DeleteObject
@@ -96,9 +94,7 @@ class MinioStorage:
             bool: 如果存储桶已存在或创建成功则返回True，否则返回False
         """
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self._executor, self.ensure_bucket, bucket_name
-        )
+        return await loop.run_in_executor(self._executor, self.ensure_bucket, bucket_name)
 
     def put_object(
         self,
@@ -286,9 +282,7 @@ class MinioStorage:
             Optional[bytes]: 对象数据，如果对象不存在或获取失败则返回None
         """
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self._executor, self.get_object, object_name, bucket_name
-        )
+        return await loop.run_in_executor(self._executor, self.get_object, object_name, bucket_name)
 
     def download_object(
         self,
@@ -538,7 +532,7 @@ class MinioStorage:
                 return False
 
             # 复制对象
-            result = client.copy_object(
+            client.copy_object(
                 target_bucket,
                 target_object_name,
                 CopySource(source_bucket, source_object_name),

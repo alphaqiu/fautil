@@ -6,7 +6,7 @@
 
 import datetime
 import json
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
 
 class JSONTimeEncoder(json.JSONEncoder):

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import Depends, FastAPI, Query
 from fastapi.testclient import TestClient
@@ -6,7 +6,6 @@ from injector import Binder, Injector, Module, singleton
 from pydantic import BaseModel
 
 from fautil.web.cbv import APIView, api_route
-from fautil.web.middleware import RequestLoggingMiddleware
 
 
 # 定义数据模型
@@ -61,12 +60,18 @@ def get_item_service() -> ItemService:
     return injector.get(ItemService)
 
 
+def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    print(f"decorator->>: {func}")
+    return func
+
+
 # 定义基于类的视图
 class ItemView(APIView):
     path = "/items"
     tags = ["items"]
 
-    @api_route("", response_model=List[ItemResponse])
+    @decorator
+    @api_route("", response_model=List[ItemResponse], methods=["GET"])
     async def get_items(
         self,
         service: ItemService = Depends(get_item_service),
@@ -76,10 +81,8 @@ class ItemView(APIView):
         """获取所有商品"""
         return service.get_items(skip, limit)
 
-    @api_route("/{item_id}", response_model=ItemResponse)
-    async def get_item(
-        self, item_id: int, service: ItemService = Depends(get_item_service)
-    ):
+    @api_route("/{item_id}", response_model=ItemResponse, methods=["GET"])
+    async def get_item(self, item_id: int, service: ItemService = Depends(get_item_service)):
         """获取单个商品"""
         item = service.get_item(item_id)
         if not item:
@@ -101,7 +104,7 @@ def create_app():
     app = FastAPI(title="Item API", description="使用CBV和依赖注入的API示例")
 
     # 添加中间件
-    app.add_middleware(RequestLoggingMiddleware)
+    # app.add_middleware(RequestLoggingMiddleware)
 
     # 注册路由
     ItemView.setup(app)
@@ -112,6 +115,8 @@ def create_app():
 # 创建测试客户端
 app = create_app()
 client = TestClient(app)
+
+print(app.routes)
 
 
 # 测试用例

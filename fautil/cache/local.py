@@ -5,12 +5,10 @@
 """
 
 import asyncio
-import functools
-import inspect
 import time
 from collections import OrderedDict
 from functools import wraps
-from typing import Any, Callable, Dict, Generic, Optional, Type, TypeVar, Union, cast
+from typing import Any, Callable, Generic, Optional, TypeVar
 
 from fautil.core.logging import get_logger
 
@@ -161,9 +159,7 @@ def make_key(args: tuple, kwargs: dict) -> str:
     return ":".join(key_parts)
 
 
-def lru_cache(
-    maxsize: int = 128, ttl: int = 0, key_func: Optional[Callable] = None
-) -> Callable:
+def lru_cache(maxsize: int = 128, ttl: int = 0, key_func: Optional[Callable] = None) -> Callable:
     """LRU缓存装饰器
 
     可用于装饰同步和异步函数，对函数结果进行缓存。

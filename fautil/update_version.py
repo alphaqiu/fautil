@@ -6,7 +6,6 @@
 同时也生成_version.py文件。
 """
 
-import re
 import subprocess
 import sys
 from pathlib import Path

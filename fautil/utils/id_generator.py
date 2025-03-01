@@ -6,7 +6,6 @@ ID生成器模块
 
 import threading
 import time
-from typing import Optional
 
 
 class SnowflakeGenerator:
@@ -52,9 +51,7 @@ class SnowflakeGenerator:
         # 位移量
         self.worker_id_shift = self.sequence_bits
         self.datacenter_id_shift = self.sequence_bits + self.worker_id_bits
-        self.timestamp_shift = (
-            self.sequence_bits + self.worker_id_bits + self.datacenter_id_bits
-        )
+        self.timestamp_shift = self.sequence_bits + self.worker_id_bits + self.datacenter_id_bits
 
         # 参数验证
         if worker_id > self.max_worker_id or worker_id < 0:

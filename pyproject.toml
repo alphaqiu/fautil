@@ -25,6 +25,7 @@ toml = ">=0.10.2,<0.11.0"
 openpyxl = "^3.1.5"
 apscheduler = "^3.11.0"
 loguru = "^0.7.3"
+jinja2 = "^3.1.5"
 
 [tool.poetry.group.dev.dependencies]
 uvicorn = ">=0.34.0,<0.35.0"
@@ -63,7 +64,7 @@ __version__ = "{version}"
 """
 
 [tool.black]
-line-length = 88
+line-length = 100
 target-version = ["py39"]
 include = '\.pyi?$'
 exclude = '''
@@ -79,7 +80,7 @@ exclude = '''
 
 [tool.isort]
 profile = "black"
-line_length = 88
+line_length = 100
 skip_gitignore = true
 ensure_newline_before_comments = true
 # 保持跨平台一致性，统一使用LF

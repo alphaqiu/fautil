@@ -4,9 +4,8 @@
 提供命令行工具使用的工具函数。
 """
 
-import os
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import toml
 import yaml

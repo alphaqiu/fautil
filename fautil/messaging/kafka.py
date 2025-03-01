@@ -93,9 +93,7 @@ class KafkaProducer:
             self._producer = None
             logger.debug("已关闭Kafka连接")
 
-    async def send(
-        self, topic: str, value: Dict[str, Any], key: Optional[str] = None
-    ) -> Message:
+    async def send(self, topic: str, value: Dict[str, Any], key: Optional[str] = None) -> Message:
         """发送消息
 
         Args:
@@ -248,7 +246,7 @@ class KafkaConsumer:
             return
 
         # 连接到Kafka
-        consumer = await self.connect(topics)
+        await self.connect(topics)
 
         # 创建消费任务
         task = asyncio.create_task(self._consume_loop())
@@ -279,9 +277,7 @@ class KafkaConsumer:
                     # 并行处理所有处理器
                     tasks = []
                     for handler in self._handlers[topic]:
-                        task = asyncio.create_task(
-                            self._handle_message(handler, message)
-                        )
+                        task = asyncio.create_task(self._handle_message(handler, message))
                         tasks.append(task)
 
                     # 等待所有处理器完成

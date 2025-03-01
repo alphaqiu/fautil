@@ -6,11 +6,10 @@
 
 import uuid
 from datetime import datetime
-from typing import Any, ClassVar, Dict, Optional, cast
+from typing import Any, cast
 
-from sqlalchemy import DateTime, MetaData, String, Table
+from sqlalchemy import DateTime, MetaData, String
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 

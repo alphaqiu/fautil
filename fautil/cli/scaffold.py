@@ -4,10 +4,8 @@
 提供项目脚手架功能，用于创建新项目和生成组件。
 """
 
-import os
-import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -40,7 +38,7 @@ def create_project(
         with_storage: 是否包含对象存储功能
     """
     # 获取模板目录
-    templates_dir = Path(__file__).parent.parent / "templates"
+    # templates_dir = Path(__file__).parent.parent / "templates"
 
     # 创建项目基础结构
     create_project_structure(name, project_dir, template)
@@ -59,9 +57,7 @@ def create_project(
     )
 
 
-def create_project_structure(
-    name: str, project_dir: Path, template: str = "standard"
-) -> None:
+def create_project_structure(name: str, project_dir: Path, template: str = "standard") -> None:
     """
     创建项目目录结构
 
@@ -158,30 +154,20 @@ def create_project_files(
     }
 
     # 创建 pyproject.toml
-    create_file_from_template(
-        env, "pyproject.toml.jinja2", project_dir / "pyproject.toml", context
-    )
+    create_file_from_template(env, "pyproject.toml.jinja2", project_dir / "pyproject.toml", context)
 
     # 创建 README.md
-    create_file_from_template(
-        env, "README.md.jinja2", project_dir / "README.md", context
-    )
+    create_file_from_template(env, "README.md.jinja2", project_dir / "README.md", context)
 
     # 创建 .gitignore
-    create_file_from_template(
-        env, "gitignore.jinja2", project_dir / ".gitignore", context
-    )
+    create_file_from_template(env, "gitignore.jinja2", project_dir / ".gitignore", context)
 
     # 创建 .env 和 .env.example
     create_file_from_template(env, "env.jinja2", project_dir / ".env", context)
-    create_file_from_template(
-        env, "env.example.jinja2", project_dir / ".env.example", context
-    )
+    create_file_from_template(env, "env.example.jinja2", project_dir / ".env.example", context)
 
     # 创建 alembic.ini
-    create_file_from_template(
-        env, "alembic.ini.jinja2", project_dir / "alembic.ini", context
-    )
+    create_file_from_template(env, "alembic.ini.jinja2", project_dir / "alembic.ini", context)
 
     # 创建 alembic/env.py
     create_file_from_template(
@@ -189,9 +175,7 @@ def create_project_files(
     )
 
     # 创建 wsgi.py
-    create_file_from_template(
-        env, "wsgi.py.jinja2", project_dir / name / "wsgi.py", context
-    )
+    create_file_from_template(env, "wsgi.py.jinja2", project_dir / name / "wsgi.py", context)
 
     # 创建 config.py
     create_file_from_template(
@@ -199,9 +183,7 @@ def create_project_files(
     )
 
     # 创建 db.py
-    create_file_from_template(
-        env, "db.py.jinja2", project_dir / name / "db" / "db.py", context
-    )
+    create_file_from_template(env, "db.py.jinja2", project_dir / name / "db" / "db.py", context)
 
     # 创建 base.py
     create_file_from_template(
@@ -259,9 +241,7 @@ def create_project_files(
     )
 
     # 创建 __init__.py
-    create_file_from_template(
-        env, "init.py.jinja2", project_dir / name / "__init__.py", context
-    )
+    create_file_from_template(env, "init.py.jinja2", project_dir / name / "__init__.py", context)
 
     # 如果包含认证功能，创建认证相关文件
     if with_auth:

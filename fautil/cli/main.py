@@ -4,10 +4,8 @@
 提供命令行工具的主入口，处理命令行参数。
 """
 
-import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 import click
 
@@ -25,12 +23,8 @@ def main() -> None:
 @main.command()
 @click.argument("name")
 @click.option("--dir", default=".", help="项目创建目录，默认为当前目录")
-@click.option(
-    "--template", default="standard", help="项目模板，可选: standard, minimal"
-)
-@click.option(
-    "--db", default="sqlite", help="数据库类型，可选: sqlite, mysql, postgresql"
-)
+@click.option("--template", default="standard", help="项目模板，可选: standard, minimal")
+@click.option("--db", default="sqlite", help="数据库类型，可选: sqlite, mysql, postgresql")
 @click.option("--cache", default="local", help="缓存类型，可选: local, redis")
 @click.option("--auth/--no-auth", default=True, help="是否包含认证功能")
 @click.option("--messaging/--no-messaging", default=True, help="是否包含消息队列功能")
@@ -74,9 +68,9 @@ def new(
         )
         click.echo(f"项目 {name} 已创建成功！")
         click.echo(f"项目路径: {project_dir}")
-        click.echo(f"使用以下命令启动项目:")
+        click.echo("使用以下命令启动项目:")
         click.echo(f"  cd {project_dir}")
-        click.echo(f"  poetry install")
+        click.echo("  poetry install")
         click.echo(f"  poetry run uvicorn {name}.wsgi:app --reload")
     except Exception as e:
         click.echo(f"创建项目失败: {str(e)}")

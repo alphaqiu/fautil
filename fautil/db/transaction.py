@@ -9,8 +9,6 @@ import inspect
 import logging
 from typing import Any, Callable, TypeVar, cast
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from fautil.db.engine import get_session
 
 logger = logging.getLogger(__name__)

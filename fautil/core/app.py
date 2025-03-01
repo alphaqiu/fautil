@@ -4,12 +4,11 @@
 提供应用程序的核心功能，包括启动、停止、信号处理等。
 """
 
-import asyncio
 import atexit
 import signal
 import sys
 from contextlib import asynccontextmanager
-from typing import Any, Callable, Dict, List, Optional, Set, Type, Union, cast
+from typing import Callable, Optional
 
 import fastapi
 from fastapi import FastAPI, Request, Response
@@ -17,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from fautil.core.config import AppConfig, Settings
+from fautil.core.config import Settings
 from fautil.core.events import AppStartEvent, AppStopEvent, post, post_async
 from fautil.core.logging import get_logger, setup_logging
 
@@ -30,9 +29,7 @@ class HealthCheckMiddleware(BaseHTTPMiddleware):
     为应用程序添加健康检查端点
     """
 
-    def __init__(
-        self, app: fastapi.FastAPI, path: str = "/health", status_code: int = 200
-    ) -> None:
+    def __init__(self, app: fastapi.FastAPI, path: str = "/health", status_code: int = 200) -> None:
         super().__init__(app)
         self.path = path
         self.status_code = status_code

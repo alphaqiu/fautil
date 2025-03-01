@@ -6,7 +6,7 @@
 
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional, Union
+from typing import AsyncGenerator, Optional
 
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.pool import NullPool
 
 from fautil.core.config import DBConfig
 

@@ -4,8 +4,6 @@
 提供密码加密和验证功能，使用argon2算法。
 """
 
-from typing import Optional
-
 import argon2
 
 

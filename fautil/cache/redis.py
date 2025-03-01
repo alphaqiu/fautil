@@ -5,12 +5,10 @@ Redis缓存模块
 """
 
 import asyncio
-import functools
-import inspect
 import json
 import pickle
 from functools import wraps
-from typing import Any, Callable, Dict, Generic, Optional, Type, TypeVar, Union, cast
+from typing import Any, Callable, Optional, TypeVar, cast
 
 import redis.asyncio as aioredis
 from redis import Redis

@@ -7,7 +7,6 @@
 
 import json
 import logging
-import os
 import sys
 from enum import Enum
 from pathlib import Path
@@ -24,9 +23,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound="BaseSettings")
 
 
-def locate_config_file(
-    file_name: str, explicit_path: Optional[str] = None
-) -> Optional[Path]:
+def locate_config_file(file_name: str, explicit_path: Optional[str] = None) -> Optional[Path]:
     """
     按照优先级定位配置文件路径
 
@@ -188,7 +185,12 @@ class LogConfig(BaseModel):
     """日志配置"""
 
     level: LogLevel = LogLevel.INFO
-    format: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+    format: str = (
+        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+        "<level>{message}</level>"
+    )
     file_path: Optional[str] = None
     rotation: str = "20 MB"
     retention: str = "1 week"

@@ -4,14 +4,13 @@
 使用loguru库实现统一的日志管理，支持配置日志级别、格式、输出位置等。
 """
 
-import sys
 import logging
+import sys
 from pathlib import Path
-from typing import Dict, Optional, Union
 
 from loguru import logger
 
-from fautil.core.config import LogConfig, LogLevel
+from fautil.core.config import LogConfig
 
 
 class InterceptHandler(logging.Handler):
@@ -33,9 +32,7 @@ class InterceptHandler(logging.Handler):
             depth += 1
 
         # 使用loguru记录日志
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
 def setup_logging(
@@ -59,9 +56,7 @@ def setup_logging(
     loggers = [
         logging.getLogger(name)
         for name in logging.root.manager.loggerDict
-        if name.startswith("uvicorn")
-        or name.startswith("fastapi")
-        or name.startswith("sqlalchemy")
+        if name.startswith("uvicorn") or name.startswith("fastapi") or name.startswith("sqlalchemy")
     ]
 
     # 为所有日志器添加拦截处理器

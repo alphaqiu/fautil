@@ -4,12 +4,11 @@
 提供基于APScheduler的定时任务调度功能，支持异步执行。
 """
 
-import asyncio
 import enum
 import inspect
 import uuid
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Set, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from apscheduler.executors.asyncio import AsyncIOExecutor
 from apscheduler.jobstores.memory import MemoryJobStore
@@ -357,7 +356,7 @@ class Scheduler:
         )
 
         wrapped_func = self._wrap_job(task)
-        job = self._scheduler.add_job(
+        self._scheduler.add_job(
             wrapped_func,
             trigger=trigger,
             args=args,

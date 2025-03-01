@@ -14,12 +14,9 @@ from typing import (
     Set,
     Type,
     TypeVar,
-    cast,
 )
 
-from fastapi import APIRouter, Depends, FastAPI, params
-from fastapi.routing import APIRoute
-from pydantic import BaseModel
+from fastapi import APIRouter, FastAPI, params
 
 T = TypeVar("T", bound="APIView")
 
@@ -112,9 +109,7 @@ class route:
         return func
 
 
-def api_route(
-    path: str, **kwargs: Any
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def api_route(path: str, **kwargs: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     路由装饰器
 
@@ -174,9 +169,11 @@ class APIView:
                         "methods": route_info.methods,
                         "operation_id": route_info.operation_id,
                         "include_in_schema": route_info.include_in_schema,
-                        "response_model_exclude_none": route_info.response_model_exclude_none,
-                        "response_model_exclude_unset": route_info.response_model_exclude_unset,
-                        "response_model_exclude_defaults": route_info.response_model_exclude_defaults,
+                        "response_model_exclude_none": (route_info.response_model_exclude_none),
+                        "response_model_exclude_unset": (route_info.response_model_exclude_unset),
+                        "response_model_exclude_defaults": (
+                            route_info.response_model_exclude_defaults
+                        ),
                         "response_model_exclude": route_info.response_model_exclude,
                         "response_model_include": route_info.response_model_include,
                         "name": route_info.name,
@@ -201,6 +198,9 @@ class APIView:
                     # 创建实例
                     instance = cls()
 
+                    print(f"args: {args}")
+                    print(f"kwargs: {kwargs}")
+
                     # 调用对应的方法
                     return await route_info["endpoint"](instance, *args, **kwargs)
 
@@ -219,6 +219,8 @@ class APIView:
 
             endpoint = create_endpoint(route_info)
 
+            print(f"url: {cls.path + route_info['path']}")
+            print(f"route_info: {route_info} route_info['name']: {route_info['name']}")
             # 添加路由
             router.add_api_route(
                 path=cls.path + route_info["path"],
@@ -237,9 +239,7 @@ class APIView:
                 include_in_schema=route_info["include_in_schema"],
                 response_model_exclude_none=route_info["response_model_exclude_none"],
                 response_model_exclude_unset=route_info["response_model_exclude_unset"],
-                response_model_exclude_defaults=route_info[
-                    "response_model_exclude_defaults"
-                ],
+                response_model_exclude_defaults=route_info["response_model_exclude_defaults"],
                 response_model_exclude=route_info["response_model_exclude"],
                 response_model_include=route_info["response_model_include"],
                 name=route_info["name"],
@@ -257,7 +257,7 @@ class APIView:
             prefix: 路由前缀
         """
         # 创建路由器
-        router = APIRouter(prefix=prefix + cls.path)
+        router = APIRouter(prefix=prefix)
 
         # 注册路由
         cls.register_routes(router)

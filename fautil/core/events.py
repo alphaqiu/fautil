@@ -7,7 +7,7 @@
 import asyncio
 import threading
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Set, Type
+from typing import Any, Callable, Dict, Set, Type
 
 from loguru import logger
 
@@ -109,9 +109,7 @@ class EventBus:
             event_handler = EventHandler(handler, priority, event_type, is_async)
             self._handlers[event_type].add(event_handler)
 
-            logger.debug(
-                f"已注册 {handler.__name__} 处理器用于事件 {event_type.__name__}"
-            )
+            logger.debug(f"已注册 {handler.__name__} 处理器用于事件 {event_type.__name__}")
 
     def unregister(
         self,

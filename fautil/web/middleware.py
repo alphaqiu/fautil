@@ -6,7 +6,7 @@
 
 import logging
 import time
-from typing import Callable, List, Optional
+from typing import List
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,9 +25,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     记录请求的处理时间和状态码
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """
         处理请求
 
@@ -64,8 +62,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
             # 记录错误信息
             logger.error(
-                f"{request.method} {request.url.path} "
-                f"- 500 - {process_time:.4f}s - {str(e)}"
+                f"{request.method} {request.url.path} " f"- 500 - {process_time:.4f}s - {str(e)}"
             )
 
             # 重新抛出异常
@@ -97,9 +94,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         self.jwt_secret = jwt_secret
         self.exclude_paths = exclude_paths or ["/docs", "/redoc", "/openapi.json"]
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """
         处理请求
 

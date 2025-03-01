@@ -13,3 +13,15 @@ except ImportError:
 
 # 导出主要模块
 from fautil import cache, cli, core, db, messaging, scheduler, storage, utils, web
+
+__all__ = [
+    "cache",
+    "cli",
+    "core",
+    "db",
+    "messaging",
+    "scheduler",
+    "storage",
+    "utils",
+    "web",
+]
