@@ -1,17 +1,22 @@
-# Welcome to MkDocs
+# Fautil 项目文档
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+欢迎使用 Fautil 项目文档。本项目旨在提供一个高效的API服务开发框架，基于FastAPI、SQLAlchemy、Pydantic等技术栈，支持快速开发和部署高性能的Web应用。
 
-## Commands
+## 项目概述
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+Fautil 是一个集成了多种功能的框架，旨在简化API服务的开发过程。它提供了统一的服务启动和管理机制，支持依赖注入、配置管理、日志管理、组件自动发现、请求上下文管理等功能。
 
-## Project layout
+## 主要功能
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+- **API服务生命周期管理**：提供统一的服务启动和停止接口，支持优雅关闭。
+- **依赖注入系统**：基于Injector实现，支持组件的自动发现和注册。
+- **配置管理**：支持多环境配置和动态更新。
+- **日志管理**：基于loguru，提供统一的日志配置和管理。
+- **组件自动发现**：自动检测并注册APIView、Model、DAO等组件。
+- **请求上下文管理**：支持请求级别的上下文存储和传递。
+- **统一异常处理**：提供标准化的异常处理和响应格式。
+- **健康检查和监控**：内置健康检查接口和指标收集功能。
+
+## 快速开始
+
+请参阅[快速开始](getting-started.md)章节，了解如何使用Fautil框架快速构建您的API服务。

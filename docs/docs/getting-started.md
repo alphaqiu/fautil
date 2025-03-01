@@ -58,4 +58,4 @@ if __name__ == "__main__":
 poetry run python my_fautil_project.py
 ```
 
-服务启动后，您可以在浏览器中访问`http://localhost:8000/hello`，查看API响应。 
+服务启动后，您可以在浏览器中访问`http://localhost:8000/hello`，查看API响应。

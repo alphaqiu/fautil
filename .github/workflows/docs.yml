@@ -31,8 +31,7 @@ jobs:
 
       - name: Build docs
         run: |
-          cd docs
-          poetry run mkdocs build
+          poetry run mkdocs build -f docs/mkdocs.yml -d site
 
       - name: Deploy to GitHub Pages Repo
         uses: JamesIves/github-pages-deploy-action@v4
@@ -40,5 +39,5 @@ jobs:
           token: ${{ secrets.WEBSITE }}
           repository-name: alphaqiu/fautil.github.io
           branch: gh-page
-          folder: site  # MkDocs输出目录
+          folder: site
           clean: true

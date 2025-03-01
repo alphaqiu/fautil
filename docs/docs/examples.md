@@ -36,4 +36,4 @@ if __name__ == "__main__":
 
 `discovery_demo.py`文件展示了如何自动发现和注册组件。
 
-更多示例代码，请参阅`examples`目录下的其他文件。 
+更多示例代码，请参阅`examples`目录下的其他文件。
