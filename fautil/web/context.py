@@ -1,5 +1,5 @@
 """
-请求上下文管理模块
+请求上下文管理模块。
 
 提供请求上下文和跟踪ID的存储和管理功能。
 支持在请求处理过程中在不同组件间共享上下文信息。
@@ -20,7 +20,7 @@ _context_storage: ContextVar[Dict[str, Any]] = ContextVar("context_storage", def
 
 class RequestContext:
     """
-    请求上下文
+    请求上下文。
 
     管理请求级别的上下文信息，包括请求ID、路径、方法等。
     提供存储和检索上下文数据的接口。
@@ -29,7 +29,7 @@ class RequestContext:
     @staticmethod
     def get_request_id() -> str:
         """
-        获取当前请求ID
+        获取当前请求ID。
 
         Returns:
             当前请求ID，如果不存在则返回空字符串
@@ -39,7 +39,7 @@ class RequestContext:
     @staticmethod
     def set_request_id(request_id: str) -> None:
         """
-        设置当前请求ID
+        设置当前请求ID。
 
         Args:
             request_id: 请求ID
@@ -49,7 +49,7 @@ class RequestContext:
     @staticmethod
     def get_request() -> Optional[Request]:
         """
-        获取当前请求对象
+        获取当前请求对象。
 
         Returns:
             当前请求对象，如果不存在则返回None
@@ -59,7 +59,7 @@ class RequestContext:
     @staticmethod
     def set_request(request: Request) -> None:
         """
-        设置当前请求对象
+        设置当前请求对象。
 
         Args:
             request: 请求对象
@@ -69,7 +69,7 @@ class RequestContext:
     @staticmethod
     def get(key: str, default: Any = None) -> Any:
         """
-        获取上下文数据
+        获取上下文数据。
 
         Args:
             key: 数据键
@@ -84,7 +84,7 @@ class RequestContext:
     @staticmethod
     def set(key: str, value: Any) -> None:
         """
-        设置上下文数据
+        设置上下文数据。
 
         Args:
             key: 数据键
@@ -97,7 +97,7 @@ class RequestContext:
     @staticmethod
     def get_all() -> Dict[str, Any]:
         """
-        获取所有上下文数据
+        获取所有上下文数据。
 
         Returns:
             所有上下文数据的副本
@@ -106,13 +106,13 @@ class RequestContext:
 
     @staticmethod
     def clear() -> None:
-        """清除上下文数据"""
+        """清除上下文数据。"""
         _context_storage.set({})
 
     @staticmethod
     def generate_request_id() -> str:
         """
-        生成新的请求ID
+        生成新的请求ID。
 
         Returns:
             生成的请求ID
@@ -120,9 +120,29 @@ class RequestContext:
         return str(uuid.uuid4())
 
 
+def get_request_context() -> RequestContext:
+    """
+    获取当前请求上下文。
+
+    Returns:
+        RequestContext: 当前请求上下文
+    """
+    return RequestContext()
+
+
+def has_request_context() -> bool:
+    """
+    检查是否存在请求上下文。
+
+    Returns:
+        bool: 如果存在请求上下文则返回True，否则返回False
+    """
+    return bool(_request_var.get())
+
+
 class RequestTimer:
     """
-    请求计时器
+    请求计时器。
 
     跟踪请求处理时间。
     """
@@ -130,13 +150,13 @@ class RequestTimer:
     __slots__ = ("start_time", "end_time")
 
     def __init__(self):
-        """初始化计时器"""
+        """初始化计时器。"""
         self.start_time = time.time()
         self.end_time: Optional[float] = None
 
     def stop(self) -> float:
         """
-        停止计时
+        停止计时。
 
         Returns:
             处理时间（毫秒）
@@ -146,7 +166,7 @@ class RequestTimer:
 
     def elapsed_ms(self) -> float:
         """
-        获取已经过时间（毫秒）
+        获取已经过时间（毫秒）。
 
         Returns:
             已经过时间（毫秒）
@@ -157,7 +177,7 @@ class RequestTimer:
 
 async def get_client_ip(request: Request) -> str:
     """
-    获取客户端IP地址
+    获取客户端IP地址。
 
     首先尝试从X-Forwarded-For头获取，然后从请求中获取。
 
