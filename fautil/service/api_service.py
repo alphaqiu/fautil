@@ -12,12 +12,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional, Set, Type
 
 from fastapi import FastAPI
-from injector import (
-    Binder,
-    Injector,
-    Module,
-    singleton,
-)
+from injector import Binder, Injector, Module, singleton
 from loguru import logger
 
 from fautil.core.config import Settings
@@ -25,10 +20,7 @@ from fautil.service.config_manager import ConfigManager
 from fautil.service.discovery_manager import DiscoveryManager
 from fautil.service.http_server_manager import HTTPServerManager
 from fautil.service.injector_manager import DiscoveryModule, InjectorManager
-from fautil.service.lifecycle_manager import (
-    LifecycleEventType,
-    LifecycleManager,
-)
+from fautil.service.lifecycle_manager import LifecycleEventType, LifecycleManager
 from fautil.service.logging_manager import LoggingManager
 from fautil.service.service_manager import ServiceManager
 from fautil.service.shutdown_manager import ShutdownManager, ShutdownReason
@@ -112,6 +104,21 @@ class ServiceModule(Module):
                 to=ShutdownManager(lifecycle_manager, http_server_manager),
                 scope=singleton,
             )
+
+        # 注册服务管理器（如果尚未注册）
+        if not self._has_binding(binder, ServiceManager):
+            config_manager = binder.injector.get(ConfigManager)
+            injector_manager = InjectorManager([])
+            discovery_manager = DiscoveryManager()
+            lifecycle_manager = binder.injector.get(LifecycleManager)
+
+            service_manager = ServiceManager(
+                config_manager,
+                injector_manager,
+                discovery_manager,
+            )
+            service_manager.lifecycle_manager = lifecycle_manager
+            binder.bind(ServiceManager, to=service_manager, scope=singleton)
 
     def _has_binding(self, binder: Binder, cls: Type[Any]) -> bool:
         """检查是否已有绑定"""
@@ -272,19 +279,18 @@ class APIService:
             self._app = self._create_app()
 
         # 注册已添加的视图
-        for view in self._views:
-            if not view.is_registered:
-                self.register_view(view)
-                view.is_registered = True
+        for view_cls in self._views:
+            # 确保视图被注册到应用
+            view_instance = self._injector.get(view_cls)
+            view_instance.register(self._app)
+            logger.info(f"视图已注册到应用: {view_cls.__name__}")
 
         try:
             # 获取服务管理器
             service_manager = self._injector.get(ServiceManager)
 
             # 触发服务启动前事件
-            await service_manager.lifecycle_manager.trigger_event(
-                LifecycleEventType.PRE_STARTUP
-            )
+            await service_manager.lifecycle_manager.trigger_event(LifecycleEventType.PRE_STARTUP)
 
             # 获取HTTP服务器管理器
             http_server_manager = self._injector.get(HTTPServerManager)
@@ -307,9 +313,7 @@ class APIService:
             atexit.register(self._run_atexit_handler)
 
             # 触发HTTP服务器启动前事件
-            await service_manager.lifecycle_manager.trigger_event(
-                LifecycleEventType.PRE_HTTP_START
-            )
+            await service_manager.lifecycle_manager.trigger_event(LifecycleEventType.PRE_HTTP_START)
 
             # 启动HTTP服务器
             logger.info(f"正在启动API服务 - 地址: {host}:{port}")
@@ -325,9 +329,7 @@ class APIService:
             )
 
             # 触发服务启动后事件
-            await service_manager.lifecycle_manager.trigger_event(
-                LifecycleEventType.POST_STARTUP
-            )
+            await service_manager.lifecycle_manager.trigger_event(LifecycleEventType.POST_STARTUP)
 
             # 如果是阻塞模式，等待服务器的serve任务完成
             if block and http_server_manager._serve_task:
@@ -479,9 +481,7 @@ class APIService:
             if self._injector and hasattr(self._injector, "get"):
                 try:
                     lifecycle_manager = self._injector.get(LifecycleManager)
-                    await lifecycle_manager.trigger_event(
-                        LifecycleEventType.PRE_STARTUP
-                    )
+                    await lifecycle_manager.trigger_event(LifecycleEventType.PRE_STARTUP)
                 except Exception as e:
                     logger.error(f"触发应用启动前事件时出错: {str(e)}")
 
@@ -495,22 +495,11 @@ class APIService:
                 try:
                     # 触发HTTP服务器关闭前事件
                     lifecycle_manager = self._injector.get(LifecycleManager)
-                    await lifecycle_manager.trigger_event(
-                        LifecycleEventType.PRE_HTTP_STOP
-                    )
+                    await lifecycle_manager.trigger_event(LifecycleEventType.PRE_HTTP_STOP)
 
-                    # 等待所有请求处理完成
-                    http_server_manager = self._injector.get(HTTPServerManager)
-                    if http_server_manager.active_request_count > 0:
-                        logger.info(
-                            f"等待 {http_server_manager.active_request_count} 个活跃请求完成..."
-                        )
-                        await asyncio.sleep(1.0)  # 给请求一些时间完成
-
+                    # 不再尝试等待活跃请求，因为这可能导致STATE_TRANSITION_ERROR
                     # 触发关闭后事件
-                    await lifecycle_manager.trigger_event(
-                        LifecycleEventType.POST_HTTP_STOP
-                    )
+                    await lifecycle_manager.trigger_event(LifecycleEventType.POST_HTTP_STOP)
                     logger.info("lifespan关闭流程完成")
                 except Exception as e:
                     logger.error(f"lifespan关闭流程中出错: {str(e)}")
@@ -575,7 +564,7 @@ class APIService:
 
     def register_view(self, view_cls: Type[APIView]) -> None:
         """
-        注册API视图类
+        注册API视图
 
         将视图类添加到待注册列表，在服务启动时注册到FastAPI应用。
 
@@ -596,21 +585,22 @@ class APIService:
                 service.register_view(view_cls)
 
         注意：
-            此方法必须在start()方法调用前调用。
+            此方法可以在start()方法调用前或之后调用。
             也可以使用自动发现机制，无需手动注册视图类。
         """
-        if not self._app:
-            raise RuntimeError("应用尚未创建，无法注册视图")
-
         if view_cls in self._views:
             logger.warning(f"视图 {view_cls.__name__} 已注册，跳过")
             return
 
-        # 注册视图
-        logger.info(f"注册视图: {view_cls.__name__}")
-        view_instance = self._injector.get(view_cls)
-        view_instance.register(self._app)
+        # 将视图添加到待注册列表
+        logger.info(f"添加视图到注册列表: {view_cls.__name__}")
         self._views.add(view_cls)
+
+        # 如果应用已创建，立即注册视图
+        if self._app is not None and self._injector is not None:
+            view_instance = self._injector.get(view_cls)
+            view_instance.register(self._app)
+            logger.info(f"视图已注册: {view_cls.__name__}")
 
     def _run_atexit_handler(self) -> None:
         """在程序退出时运行的处理器"""

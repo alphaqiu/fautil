@@ -17,6 +17,7 @@ from loguru import logger
 from fautil.service.config_manager import ConfigManager
 from fautil.service.discovery_manager import DiscoveryManager
 from fautil.service.injector_manager import InjectorManager
+from fautil.service.lifecycle_manager import LifecycleEventType
 
 
 class ServiceStatus(str, Enum):
@@ -64,6 +65,7 @@ class ServiceManager:
         # 组件
         self._app: Optional[FastAPI] = None
         self._injector: Optional[Injector] = None
+        self.lifecycle_manager = None  # 初始化lifecycle_manager属性
 
         # 启动和停止钩子
         self._startup_hooks: List[Callable] = []
@@ -205,6 +207,10 @@ class ServiceManager:
             """启动事件处理"""
             logger.info("服务启动中...")
 
+            # 触发服务启动前事件
+            if self.lifecycle_manager:
+                await self.lifecycle_manager.trigger_event(LifecycleEventType.PRE_STARTUP)
+
             # 运行启动钩子
             for hook in self._startup_hooks:
                 try:
@@ -219,6 +225,11 @@ class ServiceManager:
 
             # 更新状态
             self._update_status(ServiceStatus.RUNNING)
+
+            # 触发服务启动后事件
+            if self.lifecycle_manager:
+                await self.lifecycle_manager.trigger_event(LifecycleEventType.POST_STARTUP)
+
             logger.info("服务已成功启动")
 
         # 关闭事件
@@ -227,6 +238,10 @@ class ServiceManager:
             """关闭事件处理"""
             logger.info("服务关闭中...")
             self._update_status(ServiceStatus.STOPPING)
+
+            # 触发服务关闭前事件
+            if self.lifecycle_manager:
+                await self.lifecycle_manager.trigger_event(LifecycleEventType.PRE_SHUTDOWN)
 
             # 运行关闭钩子
             for hook in self._shutdown_hooks:
@@ -240,6 +255,11 @@ class ServiceManager:
 
             # 更新状态
             self._update_status(ServiceStatus.STOPPED)
+
+            # 触发服务关闭后事件
+            if self.lifecycle_manager:
+                await self.lifecycle_manager.trigger_event(LifecycleEventType.POST_SHUTDOWN)
+
             logger.info("服务已成功关闭")
 
     def _update_status(self, status: ServiceStatus) -> None:

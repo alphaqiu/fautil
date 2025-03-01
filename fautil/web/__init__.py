@@ -60,19 +60,9 @@ Web模块 (Web Module)
 """
 
 from fautil.web.cbv import APIView, api_route, route
-from fautil.web.context import (
-    RequestContext,
-    get_request_context,
-    has_request_context,
-)
-from fautil.web.exception_handlers import (
-    setup_exception_handlers,
-)
-from fautil.web.middleware import (
-    RequestLoggingMiddleware,
-    TracingMiddleware,
-    setup_middlewares,
-)
+from fautil.web.context import RequestContext, get_request_context, has_request_context
+from fautil.web.exception_handlers import setup_exception_handlers
+from fautil.web.middleware import RequestLoggingMiddleware, TracingMiddleware, setup_middleware
 from fautil.web.models import (
     ApiResponse,
     PaginatedData,
@@ -92,7 +82,7 @@ __all__ = [
     # 中间件
     "TracingMiddleware",
     "RequestLoggingMiddleware",
-    "setup_middlewares",
+    "setup_middleware",
     # 异常处理
     "setup_exception_handlers",
     # 响应模型

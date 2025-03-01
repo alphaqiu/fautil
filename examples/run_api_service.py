@@ -54,8 +54,7 @@ async def main():
         modules=[AppModule()],
     )
 
-    # 创建应用并注册视图
-    service._create_app()
+    # 注册视图
     service.register_view(ExampleView)
 
     try:

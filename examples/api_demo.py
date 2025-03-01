@@ -23,14 +23,12 @@ from pydantic import BaseModel, Field
 # 确保能导入fautil包
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from fautil.core.config import Settings  # noqa: E402
 from fautil.service.api_service import APIService  # noqa: E402
 from fautil.service.injector_manager import Module  # noqa: E402
 from fautil.web.cbv import APIView  # noqa: E402
 from fautil.web.context import RequestContext  # noqa: E402
-from fautil.web.exception_handlers import (  # noqa: E402
-    NotFoundException,
-    ValidationException,
-)
+from fautil.web.exception_handlers import NotFoundException, ValidationException  # noqa: E402
 from fautil.web.metrics import MetricsManager  # noqa: E402
 from fautil.web.models import (  # noqa: E402
     PaginatedData,
@@ -410,19 +408,26 @@ class DemoModule(Module):
         binder.bind(ItemService, to=ItemService, scope=singleton)
 
 
+# 添加自定义配置类
+class DemoSettings(Settings):
+    """示例API配置"""
+
+    APP_TITLE: str = "示例API"
+    APP_DESCRIPTION: str = "展示fautil服务框架第三阶段功能的API示例"
+    APP_VERSION: str = "1.0.0"
+    ENABLE_METRICS: bool = True
+    ENABLE_REQUEST_CONTEXT: bool = True
+    ENABLE_REQUEST_LOGGING: bool = True
+
+
 async def main():
     """主函数"""
     # 创建API服务
     service = APIService(
         app_name="demo-api",
-        version="1.0.0",
-        title="示例API",
-        description="展示fautil服务框架第三阶段功能的API示例",
         modules=[DemoModule()],
+        settings_class=DemoSettings,
         discovery_packages=["__main__"],
-        enable_metrics=True,
-        enable_request_context=True,
-        enable_request_logging=True,
     )
 
     try:

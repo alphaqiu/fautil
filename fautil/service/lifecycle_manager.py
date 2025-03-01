@@ -31,6 +31,14 @@ class LifecycleEventType(str, Enum):
     PRE_HTTP_STOP = "pre_http_stop"
     # HTTP服务器停止后
     POST_HTTP_STOP = "post_http_stop"
+    # 服务停止前
+    PRE_SERVICES_STOP = "pre_services_stop"
+    # 服务停止后
+    POST_SERVICES_STOP = "post_services_stop"
+    # 资源清理前
+    PRE_CLEANUP = "pre_cleanup"
+    # 资源清理后
+    POST_CLEANUP = "post_cleanup"
     # 依赖注入器创建前
     PRE_INJECTOR_CREATION = "pre_injector_creation"
     # 依赖注入器创建后

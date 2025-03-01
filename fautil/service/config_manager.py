@@ -164,3 +164,14 @@ class ConfigManager:
             bool: 是否为调试模式
         """
         return self.settings.is_debug
+
+    def get_app_version(self) -> str:
+        """获取应用版本"""
+        # 首先尝试从settings.app.version获取
+        if hasattr(self.settings, "app") and hasattr(self.settings.app, "version"):
+            return self.settings.app.version
+        # 然后尝试从settings.APP_VERSION获取
+        elif hasattr(self.settings, "APP_VERSION"):
+            return getattr(self.settings, "APP_VERSION")
+        # 最后返回默认版本
+        return "0.1.0"

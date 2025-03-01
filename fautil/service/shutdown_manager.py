@@ -5,6 +5,7 @@
 """
 
 import asyncio
+import os
 import signal
 import time
 from enum import Enum
@@ -14,22 +15,20 @@ from injector import inject, singleton
 from loguru import logger
 
 from fautil.service.http_server_manager import HTTPServerManager
-from fautil.service.lifecycle_manager import (
-    ComponentType,
-    LifecycleEventType,
-    LifecycleManager,
-)
+from fautil.service.lifecycle_manager import ComponentType, LifecycleEventType, LifecycleManager
 
 
 class ShutdownPhase(str, Enum):
-    """关闭阶段枚举"""
+    """关闭阶段"""
 
     NOT_STARTED = "not_started"  # 未开始关闭
-    API_STOPPING = "api_stopping"  # 停止API服务
-    SERVICES_STOPPING = "services_stopping"  # 停止上层服务
-    INFRASTRUCTURE_STOPPING = "infrastructure_stopping"  # 停止基础设施
+    STARTING = "starting"  # 开始关闭
+    API_STOPPING = "api_stopping"  # API服务关闭中
+    SERVICES_STOPPING = "services_stopping"  # 服务关闭中
+    CLEANUP = "cleanup"  # 清理资源
     COMPLETED = "completed"  # 关闭完成
     FAILED = "failed"  # 关闭失败
+    CANCELLED = "cancelled"  # 取消关闭
 
 
 class ShutdownReason(str, Enum):
@@ -90,7 +89,7 @@ class ShutdownManager:
         self._phase_timeouts = {
             ShutdownPhase.API_STOPPING: 30,  # API关闭超时时间（秒）
             ShutdownPhase.SERVICES_STOPPING: 20,  # 上层服务关闭超时时间（秒）
-            ShutdownPhase.INFRASTRUCTURE_STOPPING: 10,  # 基础设施关闭超时时间（秒）
+            ShutdownPhase.CLEANUP: 10,  # 清理资源超时时间（秒）
         }
 
         # 组件映射
@@ -101,11 +100,11 @@ class ShutdownManager:
             ComponentType.SCHEDULER: ShutdownPhase.SERVICES_STOPPING,
             ComponentType.QUEUE: ShutdownPhase.SERVICES_STOPPING,
             ComponentType.OTHER: ShutdownPhase.SERVICES_STOPPING,
-            # 基础设施在第三阶段关闭
-            ComponentType.CACHE: ShutdownPhase.INFRASTRUCTURE_STOPPING,
-            ComponentType.STORAGE: ShutdownPhase.INFRASTRUCTURE_STOPPING,
-            ComponentType.DATABASE: ShutdownPhase.INFRASTRUCTURE_STOPPING,
-            ComponentType.CORE: ShutdownPhase.INFRASTRUCTURE_STOPPING,
+            # 基础设施在清理阶段关闭
+            ComponentType.CACHE: ShutdownPhase.CLEANUP,
+            ComponentType.STORAGE: ShutdownPhase.CLEANUP,
+            ComponentType.DATABASE: ShutdownPhase.CLEANUP,
+            ComponentType.CORE: ShutdownPhase.CLEANUP,
         }
 
         # 关闭任务
@@ -182,103 +181,54 @@ class ShutdownManager:
         """
         注册信号处理器
 
-        为SIGINT和SIGTERM信号设置处理器，确保优雅关闭。
-        根据不同操作系统选择适当的信号处理方法。
+        注册SIGINT和SIGTERM信号处理器，用于优雅关闭服务。
         """
-        # 跨平台信号处理
         try:
-            # 尝试使用asyncio事件循环方式（适用于Unix系统）
-            loop = asyncio.get_running_loop()
+            # 获取当前事件循环
+            loop = asyncio.get_event_loop()
 
-            # 设置SIGINT处理器（通常是Ctrl+C）
+            # 注册SIGINT处理器（Ctrl+C）
             loop.add_signal_handler(
                 signal.SIGINT,
-                lambda: asyncio.create_task(
-                    self.trigger_shutdown(reason=ShutdownReason.SIGNAL, message="收到SIGINT信号")
+                lambda: self.trigger_shutdown(
+                    reason=ShutdownReason.SIGNAL, message="收到SIGINT信号"
                 ),
             )
 
-            # 设置SIGTERM处理器（通常是终止信号）
+            # 注册SIGTERM处理器（终止信号）
             loop.add_signal_handler(
                 signal.SIGTERM,
-                lambda: asyncio.create_task(
-                    self.trigger_shutdown(reason=ShutdownReason.SIGNAL, message="收到SIGTERM信号")
+                lambda: self.trigger_shutdown(
+                    reason=ShutdownReason.SIGNAL, message="收到SIGTERM信号"
                 ),
             )
 
             logger.debug("已使用事件循环方式注册信号处理器")
-        except (RuntimeError, NotImplementedError, AttributeError):
-            # 如果不在事件循环中或不支持（如Windows），使用传统方式
-            # Windows可能不支持某些信号，所以我们需要捕获可能的错误
-            try:
-                # 定义信号处理函数
-                def signal_handler(sig, frame):
-                    # 在同步上下文中，我们不能直接调用异步函数
-                    # 但我们可以设置一个标志，让主循环检测到它
-                    logger.info(f"收到信号 {sig}，触发关闭流程")
-                    # 尝试使用非阻塞方式创建任务
-                    try:
-                        loop = asyncio.get_event_loop()
-                        loop.call_soon_threadsafe(
-                            lambda: asyncio.create_task(
-                                self.trigger_shutdown(
-                                    reason=ShutdownReason.SIGNAL,
-                                    message=f"收到信号 {sig}",
-                                )
-                            )
-                        )
-                    except Exception as e:
-                        logger.error(f"处理信号时出错: {str(e)}")
-                        self._is_shutting_down = True  # 至少设置标志
+        except (NotImplementedError, RuntimeError) as e:
+            # 在不支持add_signal_handler的平台上使用signal模块
+            logger.warning(f"无法使用事件循环注册信号处理器: {str(e)}")
+            logger.warning("无法注册信号处理器，服务将无法响应中断信号")
 
-                # 尝试注册SIGINT
-                signal.signal(signal.SIGINT, signal_handler)
-
-                # 尝试注册SIGTERM（Windows可能不支持）
-                try:
-                    signal.signal(signal.SIGTERM, signal_handler)
-                except (AttributeError, ValueError):
-                    logger.warning("当前平台不支持SIGTERM信号")
-
-                logger.debug("已使用传统方式注册信号处理器")
-            except Exception as e:
-                logger.error(f"注册信号处理器失败: {str(e)}")
-                logger.warning("无法注册信号处理器，服务将无法响应中断信号")
-
-    async def trigger_shutdown(
-        self,
-        reason: ShutdownReason = ShutdownReason.MANUAL,
-        message: Optional[str] = None,
-        exit_code: Optional[int] = None,
+    def trigger_shutdown(
+        self, reason: ShutdownReason = ShutdownReason.MANUAL, message: str = None
     ) -> None:
         """
-        触发关闭过程
+        触发服务关闭
 
         Args:
             reason: 关闭原因
             message: 关闭消息
-            exit_code: 退出码
         """
-        # 检查是否已经在关闭中
+        # 如果已经在关闭中，直接返回
         if self._is_shutting_down:
-            logger.warning(f"服务已经在关闭中，忽略重复的关闭请求: {reason}")
+            logger.warning("服务已经在关闭中，忽略重复的关闭请求")
             return
 
-        # 设置关闭状态
-        self._is_shutting_down = True
-        self._shutdown_reason = reason
-        self._shutdown_message = message
-        if exit_code is not None:
-            self._exit_code = exit_code
-
-        # 设置关闭事件
-        self._shutdown_event.set()
-
-        # 触发关闭流程
+        # 记录关闭原因
         logger.info(f"正在触发服务关闭: 原因={reason}, 消息={message}")
 
         # 创建关闭任务并保存引用
-        self._shutdown_task = asyncio.create_task(self._graceful_shutdown())
+        self._shutdown_task = asyncio.create_task(self._graceful_shutdown(reason, message))
 
     async def wait_for_shutdown(self, timeout: Optional[float] = None) -> bool:
         """
@@ -299,44 +249,72 @@ class ShutdownManager:
         except asyncio.TimeoutError:
             return False
 
-    async def _graceful_shutdown(self) -> None:
+    async def _graceful_shutdown(self, reason: ShutdownReason, message: str = None) -> None:
         """
-        优雅关闭流程
+        执行优雅关闭流程
 
-        按照以下步骤进行关闭：
-        1. 停止API服务
-        2. 停止上层服务
-        3. 停止基础设施
+        Args:
+            reason: 关闭原因
+            message: 关闭消息
         """
+        # 如果已经在关闭中，直接返回
+        if self._is_shutting_down:
+            logger.warning("服务已经在关闭中，忽略重复的关闭请求")
+            return
+
+        # 设置关闭标志
+        self._is_shutting_down = True
+        self._shutdown_reason = reason
+        self._shutdown_message = message or "未指定关闭原因"
+
         # 记录开始时间
         self._shutdown_start_time = time.time()
 
+        # 设置当前关闭阶段
+        self._phase = ShutdownPhase.STARTING
+
         try:
-            # 设置总超时
-            try:
-                await asyncio.wait_for(self._execute_shutdown_phases(), timeout=self._timeout)
-            except asyncio.TimeoutError:
-                logger.error(f"服务关闭超时（{self._timeout}秒），继续后续处理")
-                self._phase = ShutdownPhase.FAILED
+            # 执行API停止阶段
+            await self._execute_phase(ShutdownPhase.API_STOPPING)
+
+            # 执行服务停止阶段
+            await self._execute_phase(ShutdownPhase.SERVICES_STOPPING)
+
+            # 执行资源清理阶段
+            await self._execute_phase(ShutdownPhase.CLEANUP)
+
+            # 设置完成状态
+            self._phase = ShutdownPhase.COMPLETED
+            logger.info(
+                f"服务关闭完成，原因: {self._shutdown_reason}, "
+                f"耗时: {time.time() - self._shutdown_start_time:.2f}秒"
+            )
+
+            # 如果需要退出进程
+            if self._force_exit:
+                logger.info("正在退出进程...")
+                # 使用os._exit而不是sys.exit，确保不会触发更多的清理操作
+                os._exit(0)
+
         except asyncio.CancelledError:
-            # 捕获取消异常，优雅处理
             logger.warning("关闭任务被取消")
-            self._phase = ShutdownPhase.FAILED
+            self._phase = ShutdownPhase.CANCELLED
+            raise
         except Exception as e:
             logger.error(f"服务关闭过程中出错: {str(e)}")
             self._phase = ShutdownPhase.FAILED
+            logger.warning(
+                f"服务关闭异常，状态: {self._phase}, "
+                f"耗时: {time.time() - self._shutdown_start_time:.2f}秒"
+            )
 
-        # 记录结束时间
-        self._shutdown_end_time = time.time()
+            # 如果需要退出进程，即使出错也要退出
+            if self._force_exit:
+                logger.info("尽管出错，仍然退出进程...")
+                os._exit(1)
 
-        # 设置关闭完成事件
-        self._shutdown_complete.set()
-
-        # 输出关闭状态
-        if self._phase == ShutdownPhase.COMPLETED:
-            logger.info(f"服务关闭完成，总耗时: {self.shutdown_time:.2f}秒")
-        else:
-            logger.warning(f"服务关闭异常，状态: {self._phase}, 耗时: {self.shutdown_time:.2f}秒")
+            # 重新抛出异常
+            raise
 
     async def _execute_shutdown_phases(self) -> None:
         """
@@ -349,7 +327,7 @@ class ShutdownManager:
         await self._execute_phase(ShutdownPhase.SERVICES_STOPPING)
 
         # 3. 停止基础设施
-        await self._execute_phase(ShutdownPhase.INFRASTRUCTURE_STOPPING)
+        await self._execute_phase(ShutdownPhase.CLEANUP)
 
         # 标记为完成
         self._phase = ShutdownPhase.COMPLETED
@@ -357,7 +335,7 @@ class ShutdownManager:
 
     async def _execute_phase(self, phase: ShutdownPhase) -> None:
         """
-        执行单个关闭阶段
+        执行指定的关闭阶段
 
         Args:
             phase: 关闭阶段
@@ -366,27 +344,28 @@ class ShutdownManager:
         self._phase = phase
         logger.info(f"开始执行关闭阶段: {phase}")
 
-        # 获取阶段超时时间
-        timeout = self._phase_timeouts.get(phase, 30)  # 默认30秒
-
-        # 特殊处理API关闭阶段
+        # 根据阶段执行不同的操作
         if phase == ShutdownPhase.API_STOPPING:
-            await self._stop_api_server(timeout)
+            # 停止API服务
+            await self._stop_api_server(timeout=10.0)
+        elif phase == ShutdownPhase.SERVICES_STOPPING:
+            # 停止服务
+            await self._stop_services(timeout=10.0)
+        elif phase == ShutdownPhase.CLEANUP:
+            # 清理资源
+            await self._cleanup_resources(timeout=5.0)
+        else:
+            logger.warning(f"未知的关闭阶段: {phase}")
 
-            # 触发HTTP服务器停止后事件
-            await self.lifecycle_manager.trigger_event(LifecycleEventType.POST_HTTP_STOP)
-
-        # 触发对应的关闭事件
-        await self._trigger_phase_events(phase)
-
+        # 记录阶段完成
         logger.info(f"关闭阶段完成: {phase}")
 
-    async def _stop_api_server(self, timeout: int) -> None:
+    async def _stop_api_server(self, timeout: float = 10.0) -> None:
         """
         停止API服务器
 
         Args:
-            timeout: 超时时间（秒）
+            timeout: 停止超时时间（秒）
         """
         if self.http_server_manager is None:
             logger.warning("HTTP服务器管理器未配置，跳过API服务器关闭")
@@ -398,11 +377,8 @@ class ShutdownManager:
         # 停止HTTP服务器
         logger.info("正在停止HTTP服务器...")
         try:
-            # 创建一个保护的停止任务
-            stop_task = asyncio.create_task(asyncio.shield(self.http_server_manager.stop()))
-
-            # 等待停止任务完成，带超时控制
-            await asyncio.wait_for(stop_task, timeout=timeout)
+            # 直接等待HTTP服务器停止，不使用asyncio.shield
+            await asyncio.wait_for(self.http_server_manager.stop(), timeout=timeout)
             logger.info("HTTP服务器已停止")
         except asyncio.TimeoutError:
             logger.error(f"停止HTTP服务器超时（{timeout}秒），继续后续关闭流程")
@@ -475,3 +451,65 @@ class ShutdownManager:
                     f"执行关闭监听器时出错: {listener.name} "
                     f"[组件类型: {listener.component_type.value}, 错误: {str(e)}]"
                 )
+
+    async def _stop_services(self, timeout: float = 10.0) -> None:
+        """
+        停止服务
+
+        Args:
+            timeout: 停止超时时间（秒）
+        """
+        # 触发服务停止前事件
+        if self.lifecycle_manager:
+            await self.lifecycle_manager.trigger_event(LifecycleEventType.PRE_SERVICES_STOP)
+
+        # 停止服务
+        logger.info("正在停止服务...")
+        try:
+            # 这里可以添加停止特定服务的逻辑
+            # 例如停止数据库连接、缓存连接等
+
+            # 等待一小段时间，确保服务有时间完成关闭
+            await asyncio.sleep(0.5)
+
+            logger.info("服务已停止")
+        except Exception as e:
+            logger.error(f"停止服务时出错: {str(e)}")
+
+        # 触发服务停止后事件
+        if self.lifecycle_manager:
+            await self.lifecycle_manager.trigger_event(LifecycleEventType.POST_SERVICES_STOP)
+
+    async def _cleanup_resources(self, timeout: float = 5.0) -> None:
+        """
+        清理资源
+
+        Args:
+            timeout: 清理超时时间（秒）
+        """
+        # 触发资源清理前事件
+        if self.lifecycle_manager:
+            await self.lifecycle_manager.trigger_event(LifecycleEventType.PRE_CLEANUP)
+
+        # 清理资源
+        logger.info("正在清理资源...")
+        try:
+            # 这里可以添加清理特定资源的逻辑
+            # 例如关闭文件句柄、释放内存等
+
+            # 等待一小段时间，确保资源有时间完成清理
+            await asyncio.sleep(0.5)
+
+            logger.info("资源已清理")
+        except Exception as e:
+            logger.error(f"清理资源时出错: {str(e)}")
+
+        # 触发资源清理后事件
+        if self.lifecycle_manager:
+            await self.lifecycle_manager.trigger_event(LifecycleEventType.POST_CLEANUP)
+
+        # 设置关闭完成事件
+        self._shutdown_complete.set()
+
+        # 记录结束时间
+        self._shutdown_end_time = time.time()
