@@ -40,14 +40,39 @@ class ServiceModule(Module):
     服务基础模块
 
     注册基础服务组件到依赖注入容器。
+
+    此模块负责将核心服务组件绑定到Injector容器，包括:
+    * ConfigManager - 配置管理器
+    * LoggingManager - 日志管理器
+    * ServiceManager - 服务管理器
+    * HTTPServerManager - HTTP服务器管理器
+    * LifecycleManager - 生命周期管理器
+    * ShutdownManager - 关闭流程管理器
+    * DiscoveryManager - 组件发现管理器
+
+    使用方法：
+    ::
+
+        from fautil.service import APIService
+
+        # 创建服务并自动注册ServiceModule
+        service = APIService("my_app")
+
+        # 或者手动创建并注册
+        from fautil.service import ServiceModule
+        from injector import Injector
+
+        injector = Injector([ServiceModule()])
     """
 
     def configure(self, binder: Binder) -> None:
         """
         配置依赖注入绑定
 
-        Args:
-            binder: 注入器绑定器
+        将核心服务组件绑定到依赖注入容器。
+
+        参数：
+            binder: 依赖注入绑定器
         """
         # 注册配置管理器（如果尚未注册）
         if not self._has_binding(binder, ConfigManager):
@@ -101,8 +126,43 @@ class APIService:
     """
     API服务核心类
 
-    管理FastAPI应用的生命周期，包括启动、停止和信号处理。
-    提供依赖注入、组件发现和自动注册机制。
+    管理API服务的生命周期，包括启动、停止和组件发现。
+    提供依赖注入、信号处理和优雅关闭功能。
+
+    属性：
+        app_name: str
+            应用名称，用于日志和指标标识
+        injector: Injector
+            依赖注入容器实例
+        app: Optional[FastAPI]
+            FastAPI应用实例，在start()方法调用后可用
+        _view_classes: Set[Type[APIView]]
+            已注册的视图类集合
+
+    示例：
+    ::
+
+        from fautil.service import APIService
+
+        # 创建API服务
+        service = APIService(
+            app_name="my_app",
+            discovery_packages=["my_app"]
+        )
+
+        # 注册自定义视图
+        from my_app.views import UserView
+        service.register_view(UserView)
+
+        # 启动服务
+        await service.start(
+            host="0.0.0.0",
+            port=8000,
+            log_level="info"
+        )
+
+        # 停止服务
+        await service.stop()
     """
 
     def __init__(
@@ -115,11 +175,15 @@ class APIService:
         """
         初始化API服务
 
-        Args:
-            app_name: 应用名称
-            modules: 依赖注入模块列表
-            settings_class: 配置类
-            discovery_packages: 要扫描发现组件的包列表
+        参数：
+            app_name: str
+                应用名称，用于日志和指标标识
+            modules: Optional[List[Module]]
+                额外的依赖注入模块列表，默认为None
+            settings_class: Type[Settings]
+                配置类，默认为Settings基类
+            discovery_packages: Optional[List[str]]
+                要自动发现组件的包列表，默认为None
         """
         self.app_name = app_name
         self._app: Optional[FastAPI] = None
@@ -158,13 +222,42 @@ class APIService:
         """
         启动API服务
 
-        Args:
-            host: 监听主机
-            port: 监听端口
-            log_level: 日志级别
-            reload: 是否自动重载
-            workers: 工作进程数量
-            block: 是否阻塞当前线程直到服务关闭
+        启动HTTP服务器并运行FastAPI应用。
+        如果设置了block=True，则会阻塞直到服务停止。
+
+        参数：
+            host: str
+                监听主机地址，默认为"127.0.0.1"
+            port: int
+                监听端口，默认为8000
+            log_level: str
+                日志级别，默认为"info"
+            reload: bool
+                是否启用自动重载，默认为False（开发环境推荐）
+            workers: Optional[int]
+                工作进程数，默认为None（自动决定）
+            block: bool
+                是否阻塞等待服务停止，默认为True
+
+        示例：
+        ::
+
+            # 基本用法
+            await service.start()
+
+            # 自定义配置
+            await service.start(
+                host="0.0.0.0",
+                port=8000,
+                log_level="debug",
+                reload=True,
+                block=False
+            )
+
+            # 非阻塞启动
+            await service.start(block=False)
+            # 执行其他操作...
+            await service.stop()
         """
         if self._started:
             logger.warning("服务已经在运行中")
@@ -189,7 +282,9 @@ class APIService:
             service_manager = self._injector.get(ServiceManager)
 
             # 触发服务启动前事件
-            await service_manager.lifecycle_manager.trigger_event(LifecycleEventType.PRE_STARTUP)
+            await service_manager.lifecycle_manager.trigger_event(
+                LifecycleEventType.PRE_STARTUP
+            )
 
             # 获取HTTP服务器管理器
             http_server_manager = self._injector.get(HTTPServerManager)
@@ -212,7 +307,9 @@ class APIService:
             atexit.register(self._run_atexit_handler)
 
             # 触发HTTP服务器启动前事件
-            await service_manager.lifecycle_manager.trigger_event(LifecycleEventType.PRE_HTTP_START)
+            await service_manager.lifecycle_manager.trigger_event(
+                LifecycleEventType.PRE_HTTP_START
+            )
 
             # 启动HTTP服务器
             logger.info(f"正在启动API服务 - 地址: {host}:{port}")
@@ -228,7 +325,9 @@ class APIService:
             )
 
             # 触发服务启动后事件
-            await service_manager.lifecycle_manager.trigger_event(LifecycleEventType.POST_STARTUP)
+            await service_manager.lifecycle_manager.trigger_event(
+                LifecycleEventType.POST_STARTUP
+            )
 
             # 如果是阻塞模式，等待服务器的serve任务完成
             if block and http_server_manager._serve_task:
@@ -252,7 +351,22 @@ class APIService:
         """
         停止API服务
 
-        支持优雅关闭，等待处理中的请求完成，分阶段关闭各组件。
+        按照优先级顺序优雅地停止所有服务组件：
+        1. 首先停止HTTP服务器，等待处理中的请求完成
+        2. 然后停止应用级服务，如定时任务
+        3. 最后停止底层服务，如数据库连接
+
+        示例：
+        ::
+
+            # 正常关闭服务
+            await service.stop()
+
+            # 在异步上下文管理器中使用
+            async with contextlib.AsyncExitStack():
+                service = APIService("my_app")
+                await service.start(block=False)
+                # 退出上下文时自动调用stop()
         """
         if not self._started or self._stopping:
             return
@@ -365,7 +479,9 @@ class APIService:
             if self._injector and hasattr(self._injector, "get"):
                 try:
                     lifecycle_manager = self._injector.get(LifecycleManager)
-                    await lifecycle_manager.trigger_event(LifecycleEventType.PRE_STARTUP)
+                    await lifecycle_manager.trigger_event(
+                        LifecycleEventType.PRE_STARTUP
+                    )
                 except Exception as e:
                     logger.error(f"触发应用启动前事件时出错: {str(e)}")
 
@@ -379,7 +495,9 @@ class APIService:
                 try:
                     # 触发HTTP服务器关闭前事件
                     lifecycle_manager = self._injector.get(LifecycleManager)
-                    await lifecycle_manager.trigger_event(LifecycleEventType.PRE_HTTP_STOP)
+                    await lifecycle_manager.trigger_event(
+                        LifecycleEventType.PRE_HTTP_STOP
+                    )
 
                     # 等待所有请求处理完成
                     http_server_manager = self._injector.get(HTTPServerManager)
@@ -390,7 +508,9 @@ class APIService:
                         await asyncio.sleep(1.0)  # 给请求一些时间完成
 
                     # 触发关闭后事件
-                    await lifecycle_manager.trigger_event(LifecycleEventType.POST_HTTP_STOP)
+                    await lifecycle_manager.trigger_event(
+                        LifecycleEventType.POST_HTTP_STOP
+                    )
                     logger.info("lifespan关闭流程完成")
                 except Exception as e:
                     logger.error(f"lifespan关闭流程中出错: {str(e)}")
@@ -455,10 +575,29 @@ class APIService:
 
     def register_view(self, view_cls: Type[APIView]) -> None:
         """
-        注册API视图
+        注册API视图类
 
-        Args:
-            view_cls: 视图类
+        将视图类添加到待注册列表，在服务启动时注册到FastAPI应用。
+
+        参数：
+            view_cls: Type[APIView]
+                要注册的视图类，必须是APIView的子类
+
+        示例：
+        ::
+
+            from my_app.views import UserView, ProductView
+
+            # 单个注册
+            service.register_view(UserView)
+
+            # 批量注册
+            for view_cls in [UserView, ProductView]:
+                service.register_view(view_cls)
+
+        注意：
+            此方法必须在start()方法调用前调用。
+            也可以使用自动发现机制，无需手动注册视图类。
         """
         if not self._app:
             raise RuntimeError("应用尚未创建，无法注册视图")

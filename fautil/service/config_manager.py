@@ -1,130 +1,166 @@
 """
 配置管理模块
 
-负责加载、验证和管理应用配置。支持多环境配置、配置覆盖和动态配置。
+提供配置加载、访问和验证的功能。
+支持从多种来源加载配置，包括配置文件、环境变量和默认值。
 """
 
-import os
-import sys
 from typing import Optional, Type, TypeVar
 
-from injector import singleton
 from loguru import logger
-from pydantic_settings import BaseSettings
+from pydantic import ValidationError
 
-from fautil.core.config import Settings
+from fautil.core.config import Settings, load_settings
 
-T = TypeVar("T", bound=BaseSettings)
+# 配置类型变量用于泛型函数
+T = TypeVar("T", bound=Settings)
 
 
-@singleton
 class ConfigManager:
     """
     配置管理器
 
     负责加载、验证和访问应用配置。
-    支持基于环境变量和配置文件的多级配置。
+    支持从YAML/JSON配置文件、环境变量、.env文件加载配置，
+    并根据优先级合并配置。
+
+    属性：
+        settings: Settings
+            已加载的配置实例
+        config_path: Optional[str]
+            配置文件路径
+        env_file: Optional[str]
+            环境变量文件路径
+        settings_class: Type[Settings]
+            配置类，默认为Settings
+
+    示例：
+    ::
+
+        # 基本用法
+        from fautil.service import ConfigManager
+        from fautil.core.config import Settings
+
+        # 默认配置加载
+        config_manager = ConfigManager()
+        settings = config_manager.settings
+
+        # 自定义配置文件路径
+        config_manager = ConfigManager(
+            config_path="config/my_config.yaml",
+            env_file=".env.prod"
+        )
+
+        # 使用自定义配置类
+        class MySettings(Settings):
+            # 自定义配置字段...
+            pass
+
+        config_manager = ConfigManager(settings_class=MySettings)
+
+        # 访问配置
+        db_url = config_manager.settings.db.url if config_manager.settings.db else None
+        log_level = config_manager.settings.log.level
     """
 
-    def __init__(self, settings_class: Type[T] = Settings):
+    def __init__(
+        self,
+        config_path: Optional[str] = None,
+        env_file: Optional[str] = None,
+        settings_class: Type[T] = Settings,  # type: ignore
+    ):
         """
         初始化配置管理器
 
-        Args:
-            settings_class: 配置类，默认使用fautil.core.config.Settings
-        """
-        self._settings_class = settings_class
-        self._settings: Optional[T] = None
-        self._loaded = False
-        self._env: str = os.environ.get("FAUTIL_ENV", "development")
+        参数：
+            config_path: Optional[str]
+                配置文件路径，默认为None（自动查找）
+            env_file: Optional[str]
+                环境变量文件路径，默认为None（自动查找）
+            settings_class: Type[Settings]
+                配置类，默认为Settings基类
 
-    async def load(self, env_file: Optional[str] = None) -> T:
+        示例：
+        ::
+
+            # 使用默认配置
+            config_manager = ConfigManager()
+
+            # 指定配置文件
+            config_manager = ConfigManager(
+                config_path="configs/app_config.yaml"
+            )
+        """
+        self.config_path = config_path
+        self.env_file = env_file
+        self.settings_class = settings_class
+
+        try:
+            self.settings = self._load_settings()
+            logger.debug(f"配置已加载: {self.settings_class.__name__}")
+        except ValidationError as e:
+            logger.error(f"配置验证失败: {e}")
+            raise
+
+    def _load_settings(self) -> T:
         """
         加载配置
 
-        Args:
-            env_file: 环境变量文件路径，如果指定则从文件加载环境变量
+        从配置文件和环境变量加载配置，并返回配置实例。
 
-        Returns:
-            加载的配置对象
+        返回：
+            Settings: 加载的配置实例
+
+        异常：
+            ValidationError: 配置验证失败时抛出
         """
-        if self._loaded:
-            assert self._settings is not None
-            return self._settings
+        return load_settings(
+            self.settings_class,
+            config_path=self.config_path,
+            env_file=self.env_file,
+        )
 
-        # 设置日志输出格式（在日志管理器初始化前的临时配置）
-        self._setup_initial_logging()
+    def reload(self) -> None:
+        """
+        重新加载配置
 
-        logger.info(f"加载配置，环境: {self._env}")
+        从配置文件和环境变量重新加载配置。
+        用于配置文件或环境变量更改后刷新配置。
 
-        # 基于环境确定配置文件路径
-        if env_file:
-            try:
-                # 使用指定的环境变量文件
-                logger.info(f"从文件加载环境变量: {env_file}")
-                # 这里不真正加载.env文件，由Settings类处理
-                self._settings = self._settings_class()  # 使用Settings的加载机制
-            except Exception as e:
-                logger.error(f"加载环境变量文件失败: {str(e)}")
-                sys.exit(1)
-        else:
-            # 不使用额外环境变量文件，直接加载
-            self._settings = self._settings_class()
+        示例：
+        ::
 
-        self._loaded = True
+            # 修改配置文件后重新加载
+            config_manager.reload()
 
-        # 打印已加载的配置（排除敏感信息）
-        self._log_loaded_config()
-
-        return self._settings
+            # 在配置更改事件中使用
+            def on_config_changed():
+                config_manager.reload()
+        """
+        try:
+            self.settings = self._load_settings()
+            logger.info(f"配置已重新加载: {self.settings_class.__name__}")
+        except ValidationError as e:
+            logger.error(f"配置重新加载失败: {e}")
+            raise
 
     def get_settings(self) -> T:
         """
-        获取配置对象
+        获取配置实例
 
-        Returns:
-            已加载的配置对象
+        返回当前加载的配置实例。
 
-        Raises:
-            RuntimeError: 如果配置尚未加载
+        返回：
+            Settings: 配置实例
         """
-        if not self._loaded or self._settings is None:
-            raise RuntimeError("配置尚未加载，请先调用load方法")
+        return self.settings
 
-        return self._settings
+    @property
+    def is_debug(self) -> bool:
+        """
+        是否为调试模式
 
-    def _setup_initial_logging(self) -> None:
-        """设置初始日志配置"""
-        # 移除默认处理器
-        logger.remove()
-
-        # 添加控制台处理器
-        logger.add(
-            sys.stderr,
-            format=(
-                "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> |"
-                " <level>{level: <8}</level> |"
-                " <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> -"
-                " <level>{message}</level>"
-            ),
-            level="INFO",
-            colorize=True,
-        )
-
-    def _log_loaded_config(self) -> None:
-        """打印已加载的配置（排除敏感信息）"""
-        assert self._settings is not None
-
-        # 获取配置字典，过滤敏感信息
-        config_dict = self._settings.model_dump()
-        sensitive_keys = ["password", "secret", "key", "token"]
-
-        # 隐藏敏感信息
-        filtered_config = {}
-        for key, value in config_dict.items():
-            if any(sensitive in key.lower() for sensitive in sensitive_keys):
-                filtered_config[key] = "******"
-            else:
-                filtered_config[key] = value
-
-        logger.debug(f"已加载配置: {filtered_config}")
+        返回：
+            bool: 是否为调试模式
+        """
+        return self.settings.is_debug

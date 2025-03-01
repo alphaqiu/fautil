@@ -1,8 +1,43 @@
 """
-服务模块
+服务模块 (Service Module)
+========================
 
 提供API服务的生命周期管理、依赖注入和信号处理。
 包含优雅启动和停止、组件发现和自动注册等功能。
+
+主要组件：
+---------
+* APIService: API服务核心类，管理服务生命周期
+* ConfigManager: 配置加载和管理
+* LoggingManager: 日志配置和管理
+* InjectorManager: 依赖注入容器管理
+* DiscoveryManager: 组件自动发现
+* LifecycleManager: 生命周期事件管理
+* HTTPServerManager: HTTP服务器管理
+* ShutdownManager: 优雅关闭流程管理
+* ServiceManager: 服务状态管理
+
+使用方法：
+---------
+::
+
+    from fautil.service import APIService
+
+    # 创建API服务
+    service = APIService(
+        app_name="my_app",
+        discovery_packages=["my_app"]
+    )
+
+    # 启动服务
+    await service.start(
+        host="0.0.0.0",
+        port=8000,
+        log_level="info"
+    )
+
+    # 停止服务
+    await service.stop()
 """
 
 from fautil.service.api_service import APIService, ServiceModule
