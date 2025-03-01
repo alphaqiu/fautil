@@ -3,7 +3,7 @@
 ![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
 ![FastAPI Version](https://img.shields.io/badge/fastapi-0.110.0%2B-green)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Pylint](https://github.com/alphaqiu/fautil/raw/main/pylint_badge.svg)
+![Pylint](https://github.com/alphaqiu/fautil/raw/master/pylint_badge.svg)
 
 基于 FastAPI 和 SQLAlchemy 的企业级应用框架，提供完整的生命周期管理、依赖注入、异步支持和优雅关闭机制。
 
@@ -127,7 +127,7 @@ class UserModel(BaseModel):
 class UserView(APIView):
     path = "/users"
     tags = ["用户管理"]
-    
+
     @route("/", methods=["GET"])
     async def list_users(self):
         """获取所有用户"""
@@ -135,7 +135,7 @@ class UserView(APIView):
             {"id": 1, "name": "张三", "email": "zhangsan@example.com"},
             {"id": 2, "name": "李四", "email": "lisi@example.com"}
         ]}
-    
+
     @route("/{user_id}", methods=["GET"])
     async def get_user(self, user_id: int):
         """获取指定用户"""
@@ -225,17 +225,17 @@ class UserResponse(BaseModel):
 class UserView(APIView):
     path = "/users"
     tags = ["用户管理"]
-    
+
     @route("/", methods=["GET"])
     async def list_users(self):
         """获取所有用户"""
         return {"users": [...]}
-    
+
     @route("/{user_id}", methods=["GET"])
     async def get_user(self, user_id: int):
         """获取指定用户"""
         return {"user": {...}}
-    
+
     @route("/", methods=["POST"], response_model=UserResponse)
     async def create_user(self, user: UserCreate):
         """创建新用户"""
@@ -264,11 +264,11 @@ class AppModule(Module):
 # 使用服务
 class UserView(APIView):
     path = "/users"
-    
+
     def __init__(self, user_service: UserService):
         super().__init__()
         self.user_service = user_service
-    
+
     @route("/", methods=["GET"])
     async def list_users(self):
         return {"users": await self.user_service.get_users()}
@@ -289,10 +289,10 @@ async def some_function():
     # 获取当前请求上下文
     context = get_request_context()
     request_id = context.request_id
-    
+
     # 存储上下文数据
     context.set("user_id", 123)
-    
+
     # 从上下文获取数据
     user_id = context.get("user_id")
 ```
@@ -320,7 +320,7 @@ raise APIException(
 ### 行结束符处理
 
 - 项目使用`.gitattributes`文件统一管理行结束符
-- 提交到Git仓库的代码统一使用LF(`\n`)作为行结束符 
+- 提交到Git仓库的代码统一使用LF(`\n`)作为行结束符
 - 在Windows上检出后会自动转换为CRLF(`\r\n`)
 - 在提交前会自动转换回LF
 
