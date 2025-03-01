@@ -8,6 +8,12 @@ on:
       - '.github/workflows/docs.yml'
       - 'fautil/**/*.py'  # 当源代码更新时也更新文档
 
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -39,11 +45,19 @@ jobs:
           pwd
           ls -la docs/site
 
-      - name: Deploy to Github Pages
-        uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.ref == 'refs/heads/master' }}
+      - name: Deploy to GitHub Pages Repo
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          personal_token: ${{ secrets.WEBSITE }}
-          publish_dir: ./docs/site
-          external_repository: alphaqiu/fautil.github.io
-          publish_branch: gh-page
+          token: ${{ secrets.WEBSITE }}
+          repository-name: alphaqiu/fautil.github.io
+          branch: gh-page
+          folder: docs/site
+          clean: true
+      # - name: Deploy to Github Pages
+      #   uses: peaceiris/actions-gh-pages@v3
+      #   if: ${{ github.ref == 'refs/heads/master' }}
+      #   with:
+      #     personal_token: ${{ secrets.WEBSITE }}
+      #     publish_dir: docs/site
+      #     external_repository: alphaqiu/fautil.github.io
+      #     publish_branch: gh-page
