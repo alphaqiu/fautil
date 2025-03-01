@@ -1,13 +1,37 @@
 """
-Web模块包括API路由、中间件、CBV实现等功能。
+Web模块
+
+提供Web应用构建相关功能，包括API视图、中间件、异常处理和请求上下文。
 """
 
-# 导出公共API
-from fautil.web.cbv import APIView, api_route
-from fautil.web.middleware import setup_middlewares
+from fautil.web.cbv import APIView
+from fautil.web.context import RequestContext
+from fautil.web.exception_handlers import APIException, setup_exception_handlers
+from fautil.web.metrics import MetricsManager, setup_metrics
+from fautil.web.middleware import (
+    RequestLoggingMiddleware,
+    RequestTrackingMiddleware,
+    TracingMiddleware,
+)
+from fautil.web.models import (
+    ApiResponse,
+    ErrorDetail,
+    PaginatedData,
+    create_response_model,
+)
 
 __all__ = [
     "APIView",
-    "api_route",
-    "setup_middlewares",
+    "RequestContext",
+    "APIException",
+    "setup_exception_handlers",
+    "RequestLoggingMiddleware",
+    "RequestTrackingMiddleware",
+    "TracingMiddleware",
+    "ApiResponse",
+    "ErrorDetail",
+    "PaginatedData",
+    "create_response_model",
+    "MetricsManager",
+    "setup_metrics",
 ]

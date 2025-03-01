@@ -1,0 +1,529 @@
+"""
+API服务核心模块
+
+提供API服务的生命周期管理、依赖注入和信号处理。
+实现优雅启动和停止的核心逻辑。
+"""
+
+import asyncio
+import atexit
+import os
+import signal
+import sys
+import time
+from contextlib import asynccontextmanager
+from typing import Any, Callable, Dict, List, Optional, Set, Type, TypeVar, cast
+
+import uvicorn
+from fastapi import Depends, FastAPI
+from injector import (
+    Binder,
+    Injector,
+    Module,
+    Provider,
+    Scope,
+    get_bindings,
+    inject,
+    singleton,
+)
+from loguru import logger
+
+from fautil.core.config import Settings
+from fautil.service.config_manager import ConfigManager
+from fautil.service.discovery_manager import DiscoveryManager
+from fautil.service.http_server_manager import HTTPServerManager
+from fautil.service.injector_manager import DiscoveryModule, InjectorManager
+from fautil.service.lifecycle_manager import (
+    ComponentType,
+    LifecycleEventType,
+    LifecycleManager,
+    on_event,
+    on_shutdown,
+    on_startup,
+    post_shutdown,
+    pre_startup,
+)
+from fautil.service.logging_manager import LoggingManager
+from fautil.service.service_manager import ServiceManager
+from fautil.service.shutdown_manager import ShutdownManager, ShutdownReason
+from fautil.web.cbv import APIView
+
+
+class ServiceModule(Module):
+    """
+    服务基础模块
+
+    注册基础服务组件到依赖注入容器。
+    """
+
+    def configure(self, binder: Binder) -> None:
+        """
+        配置依赖注入绑定
+
+        Args:
+            binder: 注入器绑定器
+        """
+        # 注册配置管理器（如果尚未注册）
+        if not self._has_binding(binder, ConfigManager):
+            binder.bind(ConfigManager, to=ConfigManager(), scope=singleton)
+
+        # 注册日志管理器（如果尚未注册）
+        if not self._has_binding(binder, LoggingManager):
+            binder.bind(
+                LoggingManager,
+                to=LoggingManager(binder.injector.get(ConfigManager)),
+                scope=singleton,
+            )
+
+        # 注册生命周期事件管理器（如果尚未注册）
+        if not self._has_binding(binder, LifecycleManager):
+            binder.bind(
+                LifecycleManager,
+                to=LifecycleManager(),
+                scope=singleton,
+            )
+
+        # 注册HTTP服务器管理器（如果尚未注册）
+        if not self._has_binding(binder, HTTPServerManager):
+            binder.bind(
+                HTTPServerManager,
+                to=HTTPServerManager(binder.injector.get(ConfigManager)),
+                scope=singleton,
+            )
+
+        # 注册关闭管理器（如果尚未注册）
+        if not self._has_binding(binder, ShutdownManager):
+            lifecycle_manager = binder.injector.get(LifecycleManager)
+            http_server_manager = binder.injector.get(HTTPServerManager)
+
+            binder.bind(
+                ShutdownManager,
+                to=ShutdownManager(lifecycle_manager, http_server_manager),
+                scope=singleton,
+            )
+
+    def _has_binding(self, binder: Binder, cls: Type[Any]) -> bool:
+        """检查是否已有绑定"""
+        try:
+            binder.injector.get(cls)
+            return True
+        except:
+            return False
+
+
+class APIService:
+    """
+    API服务核心类
+
+    管理FastAPI应用的生命周期，包括启动、停止和信号处理。
+    提供依赖注入、组件发现和自动注册机制。
+    """
+
+    def __init__(
+        self,
+        app_name: str,
+        modules: Optional[List[Module]] = None,
+        settings_class: Type[Settings] = Settings,
+        discovery_packages: Optional[List[str]] = None,
+    ):
+        """
+        初始化API服务
+
+        Args:
+            app_name: 应用名称
+            modules: 依赖注入模块列表
+            settings_class: 配置类
+            discovery_packages: 要扫描发现组件的包列表
+        """
+        self.app_name = app_name
+        self._app: Optional[FastAPI] = None
+        self._injector: Optional[Injector] = None
+        self._settings_class = settings_class
+        self._modules = modules or []
+        self._discovery_packages = discovery_packages or []
+        self._started = False
+        self._stopping = False
+        self._views: Set[Type[APIView]] = set()
+
+        # 记录服务启动时间
+        self._start_time = time.time()
+
+        # 添加服务基础模块
+        if not any(isinstance(module, ServiceModule) for module in self._modules):
+            self._modules.append(ServiceModule())
+
+        # 创建核心管理器实例
+        self._injector_manager = InjectorManager(self._modules)
+        self._discovery_manager = DiscoveryManager()
+
+        # 添加发现模块
+        if not any(isinstance(module, DiscoveryModule) for module in self._modules):
+            self._modules.append(DiscoveryModule(self._discovery_manager))
+
+    async def start(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 8000,
+        log_level: str = "info",
+        reload: bool = False,
+        workers: Optional[int] = None,
+        block: bool = True,
+    ) -> None:
+        """
+        启动API服务
+
+        Args:
+            host: 监听主机
+            port: 监听端口
+            log_level: 日志级别
+            reload: 是否自动重载
+            workers: 工作进程数量
+            block: 是否阻塞当前线程直到服务关闭
+        """
+        if self._started:
+            logger.warning("服务已经在运行中")
+            return
+
+        # 确保注入器已初始化
+        if self._injector is None:
+            self._injector = self._injector_manager.create_injector()
+
+        # 确保应用已创建
+        if self._app is None:
+            self._app = self._create_app()
+
+        # 注册已添加的视图
+        for view in self._views:
+            if not view.is_registered:
+                self.register_view(view)
+                view.is_registered = True
+
+        try:
+            # 获取服务管理器
+            service_manager = self._injector.get(ServiceManager)
+
+            # 触发服务启动前事件
+            await service_manager.lifecycle_manager.trigger_event(
+                LifecycleEventType.PRE_STARTUP
+            )
+
+            # 获取HTTP服务器管理器
+            http_server_manager = self._injector.get(HTTPServerManager)
+            http_server_manager.app = self._app
+
+            # 配置服务器
+            http_server_manager.configure_server(
+                host=host,
+                port=port,
+                log_level=log_level,
+                reload=reload,
+                workers=workers,
+            )
+
+            # 注册关闭管理器
+            shutdown_manager = self._injector.get(ShutdownManager)
+            shutdown_manager.register_signal_handlers()
+
+            # 注册退出处理器
+            atexit.register(self._run_atexit_handler)
+
+            # 触发HTTP服务器启动前事件
+            await service_manager.lifecycle_manager.trigger_event(
+                LifecycleEventType.PRE_HTTP_START
+            )
+
+            # 启动HTTP服务器
+            logger.info(f"正在启动API服务 - 地址: {host}:{port}")
+            self._started = True
+            self._stopping = False
+
+            # 启动HTTP服务器
+            await http_server_manager.start()
+
+            # 触发HTTP服务器启动后事件
+            await service_manager.lifecycle_manager.trigger_event(
+                LifecycleEventType.POST_HTTP_START
+            )
+
+            # 触发服务启动后事件
+            await service_manager.lifecycle_manager.trigger_event(
+                LifecycleEventType.POST_STARTUP
+            )
+
+            # 如果是阻塞模式，等待服务器的serve任务完成
+            if block and http_server_manager._serve_task:
+                try:
+                    await http_server_manager._serve_task
+                except asyncio.CancelledError:
+                    logger.info("服务器任务被取消")
+                    await self.stop()
+                except Exception as e:
+                    logger.error(f"服务器运行时出错: {str(e)}")
+                    await self.stop()
+                    raise
+
+        except Exception as e:
+            logger.error(f"启动API服务时出错: {str(e)}")
+            self._started = False
+            self._stopping = False
+            raise
+
+    async def stop(self) -> None:
+        """
+        停止API服务
+
+        支持优雅关闭，等待处理中的请求完成，分阶段关闭各组件。
+        """
+        if not self._started or self._stopping:
+            return
+
+        # 标记停止状态
+        self._stopping = True
+
+        try:
+            # 使用关闭管理器
+            logger.info("正在停止API服务...")
+            if self._injector:
+                try:
+                    # 获取关闭管理器
+                    shutdown_manager = self._injector.get(ShutdownManager)
+
+                    # 如果关闭流程尚未开始，触发关闭
+                    if not shutdown_manager.is_shutting_down:
+                        await shutdown_manager.trigger_shutdown(
+                            reason=ShutdownReason.API_CALL,
+                            message="API服务停止调用",
+                        )
+
+                    # 等待关闭完成
+                    logger.info("等待关闭流程完成...")
+                    await shutdown_manager.wait_for_shutdown()
+
+                except Exception as e:
+                    logger.error(f"使用关闭管理器时出错: {str(e)}")
+
+                    # 如果关闭管理器失败，尝试直接停止HTTP服务器
+                    try:
+                        http_server_manager = self._injector.get(HTTPServerManager)
+                        await http_server_manager.stop()
+                    except Exception as e2:
+                        logger.error(f"尝试直接停止HTTP服务器时出错: {str(e2)}")
+
+                # 移除退出处理器
+                try:
+                    atexit.unregister(self._run_atexit_handler)
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.error(f"停止API服务时出错: {str(e)}")
+        finally:
+            # 无论如何，重置服务状态
+            self._started = False
+            self._stopping = False
+            logger.info("API服务已停止")
+
+    def _create_app(self) -> FastAPI:
+        """
+        创建FastAPI应用实例
+
+        Returns:
+            FastAPI应用实例
+        """
+        assert self._injector is not None, "依赖注入器未初始化"
+
+        # 获取配置
+        config_manager = self._injector.get(ConfigManager)
+        settings = config_manager.get_settings()
+
+        # 应用标题和描述
+        app_title = getattr(settings, "APP_TITLE", self.app_name)
+        app_desc = getattr(settings, "APP_DESCRIPTION", "API服务")
+        app_version = getattr(settings, "APP_VERSION", "0.1.0")
+
+        # 文档URL配置
+        docs_url = getattr(settings, "DOCS_URL", "/docs")
+        redoc_url = getattr(settings, "REDOC_URL", "/redoc")
+        openapi_url = getattr(settings, "OPENAPI_URL", "/openapi.json")
+
+        # 创建FastAPI应用实例
+        app = FastAPI(
+            title=app_title,
+            description=app_desc,
+            version=app_version,
+            docs_url=docs_url,
+            redoc_url=redoc_url,
+            openapi_url=openapi_url,
+            lifespan=self._create_lifespan_context(),  # 新增: 使用自定义lifespan上下文
+        )
+
+        # 设置依赖注入容器
+        app.state.injector = self._injector
+
+        # 设置应用
+        self._setup_app(app)
+
+        return app
+
+    def _create_lifespan_context(self):
+        """
+        创建FastAPI的lifespan上下文
+
+        创建一个异步上下文管理器，用于处理应用的生命周期事件。
+        这确保了应用在启动和关闭时能够执行必要的设置和清理操作。
+
+        Returns:
+            AsyncContextManager: lifespan上下文管理器
+        """
+        logger.debug("创建lifespan上下文管理器")
+
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
+            # 启动时的操作
+            logger.info("应用启动中: lifespan上下文开始")
+
+            # 触发应用启动前的所有处理器
+            if self._injector and hasattr(self._injector, "get"):
+                try:
+                    lifecycle_manager = self._injector.get(LifecycleManager)
+                    await lifecycle_manager.trigger_event(
+                        LifecycleEventType.PRE_STARTUP
+                    )
+                except Exception as e:
+                    logger.error(f"触发应用启动前事件时出错: {str(e)}")
+
+            yield  # 应用运行时
+
+            # 关闭时的操作
+            logger.info("应用关闭中: lifespan上下文结束")
+
+            # 触发应用关闭前的所有处理器
+            if self._injector and hasattr(self._injector, "get"):
+                try:
+                    # 触发HTTP服务器关闭前事件
+                    lifecycle_manager = self._injector.get(LifecycleManager)
+                    await lifecycle_manager.trigger_event(
+                        LifecycleEventType.PRE_HTTP_STOP
+                    )
+
+                    # 等待所有请求处理完成
+                    http_server_manager = self._injector.get(HTTPServerManager)
+                    if http_server_manager.active_request_count > 0:
+                        logger.info(
+                            f"等待 {http_server_manager.active_request_count} 个活跃请求完成..."
+                        )
+                        await asyncio.sleep(1.0)  # 给请求一些时间完成
+
+                    # 触发关闭后事件
+                    await lifecycle_manager.trigger_event(
+                        LifecycleEventType.POST_HTTP_STOP
+                    )
+                    logger.info("lifespan关闭流程完成")
+                except Exception as e:
+                    logger.error(f"lifespan关闭流程中出错: {str(e)}")
+
+        return lifespan
+
+    def _setup_app(self, app: FastAPI) -> None:
+        """
+        设置FastAPI应用
+
+        Args:
+            app: FastAPI应用
+        """
+        # 添加健康检查路由
+        app.add_api_route("/health", self._health_check, methods=["GET"])
+
+        # 可以添加其他全局设置，如CORS、异常处理等
+
+    async def _discover_components(self) -> None:
+        """
+        发现和注册组件
+        """
+        logger.info(f"开始发现组件，包列表: {self._discovery_packages}")
+
+        # 获取服务管理器
+        service_manager = self._injector.get(ServiceManager)
+
+        # 扫描包
+        for package_name in self._discovery_packages:
+            logger.info(f"扫描包: {package_name}")
+            try:
+                # 发现组件
+                await service_manager.discover_components(package_name)
+            except Exception as e:
+                logger.error(f"扫描包 {package_name} 时出错: {str(e)}")
+
+        logger.info("组件发现完成")
+
+    async def _health_check(self) -> Dict[str, Any]:
+        """
+        健康检查处理器
+
+        Returns:
+            健康状态信息
+        """
+        if self._injector:
+            # 如果有服务管理器，使用其健康状态
+            try:
+                service_manager = self._injector.get(ServiceManager)
+                return service_manager.get_health_status()
+            except Exception:
+                pass
+
+        # 默认健康状态
+        uptime = time.time() - self._start_time
+        return {
+            "status": "ok",
+            "app_name": self.app_name,
+            "uptime_seconds": int(uptime),
+            "timestamp": int(time.time()),
+        }
+
+    def register_view(self, view_cls: Type[APIView]) -> None:
+        """
+        注册API视图
+
+        Args:
+            view_cls: 视图类
+        """
+        if not self._app:
+            raise RuntimeError("应用尚未创建，无法注册视图")
+
+        if view_cls in self._views:
+            logger.warning(f"视图 {view_cls.__name__} 已注册，跳过")
+            return
+
+        # 注册视图
+        logger.info(f"注册视图: {view_cls.__name__}")
+        view_instance = self._injector.get(view_cls)
+        view_instance.register(self._app)
+        self._views.add(view_cls)
+
+    def _run_atexit_handler(self) -> None:
+        """在程序退出时运行的处理器"""
+        if self._started and not self._stopping:
+            logger.warning("检测到程序退出，但服务未正常关闭，尝试优雅关闭")
+
+            # 在主线程中无法使用asyncio.run，所以只能尝试同步关闭
+            if self._injector:
+                try:
+                    # 记录关闭
+                    logger.info("正在执行同步关闭...")
+
+                    # 标记停止状态
+                    self._stopping = True
+                    self._started = False
+
+                    # 如果有关闭管理器，设置关闭标志
+                    try:
+                        shutdown_manager = self._injector.get(ShutdownManager)
+                        # 仅设置标志，不触发异步流程
+                        shutdown_manager._is_shutting_down = True
+                        logger.info("已设置关闭标志")
+                    except Exception:
+                        pass
+
+                    # 记录日志
+                    logger.info("服务已通过atexit处理器关闭")
+                except Exception as e:
+                    logger.error(f"atexit处理器关闭服务时出错: {str(e)}")

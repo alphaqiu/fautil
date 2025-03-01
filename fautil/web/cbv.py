@@ -14,9 +14,13 @@ from typing import (
     Set,
     Type,
     TypeVar,
+    Union,
+    cast,
 )
 
 from fastapi import APIRouter, FastAPI, params
+from injector import Inject, Injector, inject
+from loguru import logger
 
 T = TypeVar("T", bound="APIView")
 
@@ -109,7 +113,9 @@ class route:
         return func
 
 
-def api_route(path: str, **kwargs: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def api_route(
+    path: str, **kwargs: Any
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     路由装饰器
 
@@ -127,15 +133,21 @@ def api_route(path: str, **kwargs: Any) -> Callable[[Callable[..., Any]], Callab
 
 class APIView:
     """
-    API视图基类
+    基于类的视图基类
 
-    用于实现基于类的视图（CBV），支持路由、依赖注入、认证等功能
+    提供基于类的视图注册与方法分组功能
     """
 
     # 类属性
     path: str = ""
     tags: List[str] = []
     dependencies: List[params.Depends] = []
+    router_kwargs: Dict[str, Any] = {}
+    is_registered: bool = False  # 注册状态作为类属性
+
+    def __init__(self):
+        """初始化方法"""
+        self.router = APIRouter()
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """
@@ -169,8 +181,12 @@ class APIView:
                         "methods": route_info.methods,
                         "operation_id": route_info.operation_id,
                         "include_in_schema": route_info.include_in_schema,
-                        "response_model_exclude_none": (route_info.response_model_exclude_none),
-                        "response_model_exclude_unset": (route_info.response_model_exclude_unset),
+                        "response_model_exclude_none": (
+                            route_info.response_model_exclude_none
+                        ),
+                        "response_model_exclude_unset": (
+                            route_info.response_model_exclude_unset
+                        ),
                         "response_model_exclude_defaults": (
                             route_info.response_model_exclude_defaults
                         ),
@@ -181,26 +197,44 @@ class APIView:
                     }
                 )
 
-    @classmethod
-    def register_routes(cls, router: APIRouter) -> None:
+    def register(self, app: FastAPI, prefix: str = "") -> None:
         """
-        注册路由
-
-        将视图类的路由方法注册到指定的路由器中
+        注册视图到FastAPI应用
 
         Args:
-            router: 路由器
+            app: FastAPI应用实例
+            prefix: 路由前缀
         """
-        for route_info in cls._routes:
+        # 使用类路径和前缀
+        full_prefix = prefix + self.path
+
+        # 创建路由器
+        router_kwargs = dict(prefix=full_prefix)
+        router_kwargs.update(self.router_kwargs)
+        router = APIRouter(**router_kwargs)
+
+        # 注册路由
+        self._register_routes(router)
+
+        # 将路由器添加到应用中
+        app.include_router(router)
+        self.__class__.is_registered = True  # 使用类引用设置类属性
+
+        logger.debug(f"已注册视图 {self.__class__.__name__} 到路径前缀 '{full_prefix}'")
+
+    def _register_routes(self, router: APIRouter) -> None:
+        """
+        注册路由到路由器
+
+        Args:
+            router: APIRouter实例
+        """
+        for route_info in self.__class__._routes:
             # 创建路由处理函数
-            def create_endpoint(route_info: Dict[str, Any]) -> Callable[..., Any]:
+            def create_endpoint(
+                route_info: Dict[str, Any], instance: Any
+            ) -> Callable[..., Any]:
                 async def endpoint(*args: Any, **kwargs: Any) -> Any:
-                    # 创建实例
-                    instance = cls()
-
-                    print(f"args: {args}")
-                    print(f"kwargs: {kwargs}")
-
                     # 调用对应的方法
                     return await route_info["endpoint"](instance, *args, **kwargs)
 
@@ -217,13 +251,11 @@ class APIView:
 
                 return endpoint
 
-            endpoint = create_endpoint(route_info)
+            endpoint = create_endpoint(route_info, self)
 
-            print(f"url: {cls.path + route_info['path']}")
-            print(f"route_info: {route_info} route_info['name']: {route_info['name']}")
             # 添加路由
             router.add_api_route(
-                path=cls.path + route_info["path"],
+                path=route_info["path"],
                 endpoint=endpoint,
                 response_model=route_info["response_model"],
                 status_code=route_info["status_code"],
@@ -239,14 +271,26 @@ class APIView:
                 include_in_schema=route_info["include_in_schema"],
                 response_model_exclude_none=route_info["response_model_exclude_none"],
                 response_model_exclude_unset=route_info["response_model_exclude_unset"],
-                response_model_exclude_defaults=route_info["response_model_exclude_defaults"],
+                response_model_exclude_defaults=route_info[
+                    "response_model_exclude_defaults"
+                ],
                 response_model_exclude=route_info["response_model_exclude"],
                 response_model_include=route_info["response_model_include"],
                 name=route_info["name"],
             )
 
+            route_path = route_info["path"]
+            logger.debug(
+                f"已注册路由 {route_path} -> {route_info['endpoint'].__name__}"
+            )
+
     @classmethod
-    def setup(cls: Type[T], app: FastAPI, prefix: str = "") -> None:
+    def setup(
+        cls: Type[T],
+        app: FastAPI,
+        injector: Optional[Injector] = None,
+        prefix: str = "",
+    ) -> T:
         """
         设置视图类
 
@@ -254,13 +298,20 @@ class APIView:
 
         Args:
             app: FastAPI 应用
+            injector: 依赖注入器
             prefix: 路由前缀
+
+        Returns:
+            视图实例
         """
-        # 创建路由器
-        router = APIRouter(prefix=prefix)
+        if injector:
+            # 使用依赖注入创建实例
+            instance = injector.get(cls)
+        else:
+            # 直接创建实例
+            instance = cls()
 
-        # 注册路由
-        cls.register_routes(router)
+        # 注册视图
+        instance.register(app, prefix)
 
-        # 将路由器添加到应用中
-        app.include_router(router)
+        return instance
