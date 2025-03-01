@@ -327,7 +327,9 @@ async def pydantic_validation_exception_handler(
     )
 
 
-async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+async def sqlalchemy_exception_handler(
+    request: Request, exc: SQLAlchemyError
+) -> JSONResponse:
     """
     SQLAlchemy异常处理器
 

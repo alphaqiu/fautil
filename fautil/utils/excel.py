@@ -341,6 +341,6 @@ class ExcelImporter:
                 result.append(model)
             except Exception as e:
                 # 可以在这里处理验证错误
-                raise ValueError(f"数据验证失败: {str(e)}")
+                raise ValueError(f"数据验证失败: {str(e)}") from e
 
         return result

@@ -7,7 +7,6 @@
 
 import json
 import logging
-import sys
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, TypeVar
@@ -23,38 +22,43 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound="BaseSettings")
 
 
-def locate_config_file(file_name: str, explicit_path: Optional[str] = None) -> Optional[Path]:
+def locate_config_file(
+    file_name: str, explicit_path: Optional[str] = None
+) -> Optional[Path]:
     """
-    按照优先级定位配置文件路径
+    查找配置文件路径
+
+    按照以下优先级查找配置文件：
+    1. 明确指定的路径
+    2. 当前工作目录
+    3. 用户主目录下的.fautil目录
 
     Args:
         file_name: 配置文件名
-        explicit_path: 显式指定的配置文件路径
+        explicit_path: 明确指定的路径
 
     Returns:
         Optional[Path]: 配置文件路径，如果未找到则返回None
     """
-    paths_to_check = []
-
-    # 1. 显式指定的路径
+    # 如果明确指定了路径，则优先使用
     if explicit_path:
-        paths_to_check.append(Path(explicit_path))
-
-    # 2. 当前工作目录
-    paths_to_check.append(Path.cwd() / file_name)
-
-    # 3. 应用程序运行目录
-    app_dir = Path(sys.argv[0]).parent.absolute()
-    paths_to_check.append(app_dir / file_name)
-
-    # 4. 用户主目录下的.fautil目录
-    home_dir = Path.home()
-    paths_to_check.append(home_dir / ".fautil" / file_name)
-
-    # 检查路径
-    for path in paths_to_check:
-        if path.exists() and path.is_file():
+        path = Path(explicit_path)
+        if path.is_file():
             return path
+        if path.is_dir():
+            path = path / file_name
+            if path.exists():
+                return path
+
+    # 检查当前工作目录
+    cwd = Path.cwd() / file_name
+    if cwd.exists():
+        return cwd
+
+    # 检查家目录下的.fautil目录
+    home_dir = Path.home() / ".fautil" / file_name
+    if home_dir.exists():
+        return home_dir
 
     return None
 
@@ -73,7 +77,7 @@ def load_yaml_config(file_path: Path) -> Dict[str, Any]:
         try:
             return yaml.safe_load(f)
         except yaml.YAMLError as e:
-            logger.error(f"解析YAML配置文件失败: {e}")
+            logger.error("解析YAML配置文件失败: %s", e)
             return {}
 
 
@@ -91,7 +95,7 @@ def load_json_config(file_path: Path) -> Dict[str, Any]:
         try:
             return json.load(f)
         except json.JSONDecodeError as e:
-            logger.error(f"解析JSON配置文件失败: {e}")
+            logger.error("解析JSON配置文件失败: %s", e)
             return {}
 
 
@@ -113,14 +117,14 @@ def load_config_from_file(
     yaml_path = locate_config_file("config.yaml", config_path)
     if yaml_path:
         config_dict.update(load_yaml_config(yaml_path))
-        logger.info(f"已从 {yaml_path} 加载YAML配置")
+        logger.info("已从 %s 加载YAML配置", yaml_path)
         return config_dict
 
     # 尝试查找json配置文件
     json_path = locate_config_file("config.json", config_path)
     if json_path:
         config_dict.update(load_json_config(json_path))
-        logger.info(f"已从 {json_path} 加载JSON配置")
+        logger.info("已从 %s 加载JSON配置", json_path)
         return config_dict
 
     logger.warning("未找到配置文件，将使用环境变量和默认值")
@@ -148,24 +152,27 @@ def load_settings(
         env_path = Path(env_file)
         if env_path.exists():
             load_dotenv(env_path)
-            logger.info(f"已加载环境变量文件: {env_path}")
+            logger.info("已加载环境变量文件: %s", env_path)
     else:
         env_path = locate_config_file(".env")
         if env_path:
             load_dotenv(env_path)
-            logger.info(f"已加载环境变量文件: {env_path}")
+            logger.info("已加载环境变量文件: %s", env_path)
 
     # 从配置文件加载
     config_dict = load_config_from_file(config_path)
 
-    # 创建设置实例（包含环境变量和.env中的配置）
+    # 创建设置实例
     settings = settings_class()
 
-    # 配置文件具有最高优先级，覆盖已加载的设置
-    for key, value in config_dict.items():
-        if hasattr(settings, key):
-            setattr(settings, key, value)
+    # 更新设置
+    if config_dict:
+        # 转换为Settings实例
+        for key, value in config_dict.items():
+            if hasattr(settings, key):
+                setattr(settings, key, value)
 
+    logger.info("配置加载完成")
     return settings
 
 

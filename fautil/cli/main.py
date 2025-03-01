@@ -23,8 +23,12 @@ def main() -> None:
 @main.command()
 @click.argument("name")
 @click.option("--dir", default=".", help="项目创建目录，默认为当前目录")
-@click.option("--template", default="standard", help="项目模板，可选: standard, minimal")
-@click.option("--db", default="sqlite", help="数据库类型，可选: sqlite, mysql, postgresql")
+@click.option(
+    "--template", default="standard", help="项目模板，可选: standard, minimal"
+)
+@click.option(
+    "--db", default="sqlite", help="数据库类型，可选: sqlite, mysql, postgresql"
+)
 @click.option("--cache", default="local", help="缓存类型，可选: local, redis")
 @click.option("--auth/--no-auth", default=True, help="是否包含认证功能")
 @click.option("--messaging/--no-messaging", default=True, help="是否包含消息队列功能")
@@ -32,7 +36,7 @@ def main() -> None:
 @click.option("--storage/--no-storage", default=True, help="是否包含对象存储功能")
 def new(
     name: str,
-    dir: str,
+    directory: str,
     template: str,
     db: str,
     cache: str,
@@ -47,7 +51,7 @@ def new(
     NAME: 项目名称
     """
     # 创建项目目录
-    project_dir = Path(dir) / name
+    project_dir = Path(directory) / name
     if project_dir.exists():
         click.echo(f"错误: 目录 {project_dir} 已存在")
         sys.exit(1)
@@ -85,7 +89,7 @@ def new(
     help="生成的组件类型",
 )
 @click.argument("name")
-def generate(type: str, name: str) -> None:
+def generate(component_type: str, name: str) -> None:
     """
     生成组件
 
@@ -117,23 +121,23 @@ def generate(type: str, name: str) -> None:
         )
 
         # 根据类型生成组件
-        if type == "all" or type == "model":
+        if component_type == "all" or component_type == "model":
             generate_model(project_name, name)
             click.echo(f"模型 {name} 已生成")
 
-        if type == "all" or type == "view":
+        if component_type == "all" or component_type == "view":
             generate_view(project_name, name)
             click.echo(f"视图 {name} 已生成")
 
-        if type == "all" or type == "service":
+        if component_type == "all" or component_type == "service":
             generate_service(project_name, name)
             click.echo(f"服务 {name} 已生成")
 
-        if type == "all" or type == "schema":
+        if component_type == "all" or component_type == "schema":
             generate_schema(project_name, name)
             click.echo(f"模式 {name} 已生成")
 
-        if type == "all" or type == "dao":
+        if component_type == "all" or component_type == "dao":
             generate_dao(project_name, name)
             click.echo(f"DAO {name} 已生成")
 

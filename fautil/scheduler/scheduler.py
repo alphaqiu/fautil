@@ -42,7 +42,7 @@ class Task:
 
     def __init__(
         self,
-        id: str,
+        task_id: str,
         name: str,
         func: Callable,
         trigger: Union[CronTrigger, IntervalTrigger, DateTrigger],
@@ -54,7 +54,7 @@ class Task:
         初始化任务
 
         Args:
-            id: 任务ID
+            task_id: 任务ID
             name: 任务名称
             func: 任务函数
             trigger: 触发器
@@ -62,7 +62,7 @@ class Task:
             kwargs: 关键字参数
             next_run_time: 下次运行时间
         """
-        self.id = id
+        self.id = task_id
         self.name = name
         self.func = func
         self.trigger = trigger
@@ -224,12 +224,12 @@ class Scheduler:
         )
 
         task = Task(
-            id=task_id,
-            name=task_name,
-            func=func,
-            trigger=trigger,
-            args=args,
-            kwargs=kwargs,
+            task_id,
+            task_name,
+            func,
+            trigger,
+            args,
+            kwargs,
         )
 
         wrapped_func = self._wrap_job(task)
@@ -295,12 +295,12 @@ class Scheduler:
         )
 
         task = Task(
-            id=task_id,
-            name=task_name,
-            func=func,
-            trigger=trigger,
-            args=args,
-            kwargs=kwargs,
+            task_id,
+            task_name,
+            func,
+            trigger,
+            args,
+            kwargs,
         )
 
         wrapped_func = self._wrap_job(task)
@@ -346,12 +346,12 @@ class Scheduler:
         trigger = DateTrigger(run_date=run_date)
 
         task = Task(
-            id=task_id,
-            name=task_name,
-            func=func,
-            trigger=trigger,
-            args=args,
-            kwargs=kwargs,
+            task_id,
+            task_name,
+            func,
+            trigger,
+            args,
+            kwargs,
             next_run_time=run_date,
         )
 

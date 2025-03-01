@@ -97,9 +97,9 @@ def main():
     if updated_pyproject and generated_version_file:
         print("Version update completed successfully.")
         return 0
-    else:
-        print("Version update failed.")
-        return 1
+
+    print("Version update failed.")
+    return 1
 
 
 if __name__ == "__main__":

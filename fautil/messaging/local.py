@@ -220,7 +220,8 @@ class LocalQueue:
             if topic is None:
                 # 计算所有队列大小之和
                 return sum(len(queue) for queue in self._queues.values())
-            elif topic in self._queues:
+
+            if topic in self._queues:
                 # 返回指定队列大小
                 return len(self._queues[topic])
             else:

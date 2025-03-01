@@ -1,0 +1,251 @@
+[MASTER]
+# Python支持的最低版本
+py-version = 3.8
+
+# 添加要在向导运行前加载的文件或目录的逗号分隔列表
+init-hook='import sys; sys.path.append(".")'
+
+# 忽略的文件或目录
+ignore=_version.py, .git, __pycache__, .venv, venv, dist, build
+
+# 并行执行线程数，0表示自动
+jobs=0
+
+# 不递归到子目录中
+recursive=yes
+
+# 允许使用某些内置模块
+allowed-modules=
+
+# 扩展包白名单，这些包即使无法导入也不会引发警告
+extension-pkg-whitelist=pydantic
+
+[MESSAGES CONTROL]
+# 禁用的消息
+disable=
+    # 我们允许这些风格问题
+    fixme,
+    line-too-long,
+    
+    # 禁用一些常见的复杂度检查，可以之后逐步启用
+    too-many-lines,
+    
+    # C0111 (missing-docstring) 已更名为 C0115/C0116
+    missing-module-docstring,
+    
+    # 以下是一些可以根据项目需要逐步启用的规则
+    duplicate-code,
+    
+    # 暂时禁用以下错误，以便逐步修复
+    import-error,
+    too-few-public-methods,
+    oo-many-instance-attributes,
+    too-many-arguments,
+    too-many-locals,
+    broad-exception-caught,
+    missing-class-docstring,
+    missing-function-docstring,
+    wrong-import-position,
+    unused-argument,
+    
+    # 禁用有关特殊方法名称的警告
+    invalid-name,
+    
+    # 忽略protected成员访问警告
+    protected-access,
+    
+    # 忽略too-many-positional-arguments警告
+    too-many-positional-arguments,
+    
+    # 忽略未使用变量警告
+    unused-variable,
+    
+    # 忽略unnecessary pass语句
+    unnecessary-pass,
+    
+    # 忽略f-string日志格式化警告
+    logging-fstring-interpolation,
+    
+    # 忽略字典使用dict()而不是{}字面量的警告
+    use-dict-literal,
+    
+    # 忽略global语句警告
+    global-statement,
+    
+    # 忽略超类特定成员不存在警告
+    no-member,
+    
+    # 忽略参数不同的警告
+    arguments-differ,
+    
+    # 忽略参数重命名警告
+    arguments-renamed,
+    
+    # 忽略变量重定义警告
+    redefined-outer-name,
+    
+    # 忽略重定义内置变量警告
+    redefined-builtin,
+    
+    # 忽略函数参数问题
+    too-many-function-args,
+    
+    # 忽略无from的raise问题
+    raise-missing-from,
+    
+    # 忽略subprocess.run没有check参数问题
+    subprocess-run-check,
+    
+    # 忽略推荐使用in替代多个比较的警告
+    consider-using-in,
+    
+    # 忽略超类__init__未调用警告
+    super-init-not-called,
+    
+    # 忽略不必要的elif警告
+    no-else-return,
+    
+    # 忽略可能未预期的关键字参数警告
+    unexpected-keyword-arg
+
+[FORMAT]
+# 最大行长度，超过此行长度将发出警告
+max-line-length=100
+
+# 检查每行最后的空格
+no-space-check=trailing-comma,dict-separator
+
+# 最大文档字符串长度，0表示禁用检查
+max-doc-length=80
+
+[TYPECHECK]
+# 当类中只有属性而没有方法时不发出警告
+ignore-none=yes
+
+# 当找不到模块时抑制警告，方便使用C扩展
+ignore-on-opaque-inference=yes
+
+# 忽略检查的模块列表，通常是无法检查的扩展模块
+ignored-modules=
+    fastapi,
+    injector,
+    loguru,
+    pydantic,
+    sqlalchemy,
+    redis,
+    uvicorn,
+    yaml,
+    toml,
+    minio,
+    apscheduler,
+    setuptools_scm,
+    argon2,
+    openpyxl,
+    aiokafka,
+    starlette,
+    prometheus_client,
+    click,
+    jinja2,
+    dotenv,
+    pydantic_settings
+    
+# 忽略导入错误的模块列表
+ignored-classes=
+    SQLAlchemy,
+    scoped_session
+
+[DESIGN]
+# 最大支持的参数数量
+max-args=8
+
+# 最大属性数量
+max-attributes=10
+
+# 最小公共方法数量
+min-public-methods=1
+
+# 最大公共方法数量
+max-public-methods=30
+
+# 最大返回语句数量
+max-returns=8
+
+# 最大分支数量
+max-branches=15
+
+# 最大语句数量
+max-statements=50
+
+# 最大继承深度
+max-parents=7
+
+# 最大嵌套块深度
+max-nested-blocks=5
+
+# 最大局部变量数量
+max-locals=20
+
+# 最大布尔表达式数量
+max-bool-expr=5
+
+[SIMILARITIES]
+# 相似行的最小长度
+min-similarity-lines=6
+
+# 忽略注释
+ignore-comments=yes
+
+# 忽略文档字符串
+ignore-docstrings=yes
+
+# 忽略导入
+ignore-imports=yes
+
+[BASIC]
+# 良好变量名正则表达式
+good-names=i,j,k,ex,Run,_,id,db,lg,fs,e,f,wb,ws,dt,s,h,q
+
+# 不检查的变量名
+no-docstring-rgx=^_
+
+# 类名正则表达式
+class-rgx=[A-Z_][a-zA-Z0-9]+$
+
+# 方法名正则表达式 - 添加豁免特殊方法名
+method-rgx=((__.*__)|([a-z][a-z0-9_]{2,30})|([a-z][a-zA-Z0-9]{2,30}))$
+
+# 变量名正则表达式
+variable-rgx=[a-z_][a-z0-9_]{1,30}$
+
+# 常量名正则表达式
+const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
+
+# 属性名正则表达式
+attr-rgx=[a-z_][a-z0-9_]{1,30}$
+
+# 参数名正则表达式
+argument-rgx=[a-z_][a-z0-9_]{1,30}$
+
+# 类属性名正则表达式
+class-attribute-rgx=([A-Za-z_][A-Za-z0-9_]{2,30}|(__.*__))$
+
+# 内联变量名正则表达式
+inlinevar-rgx=[A-Za-z_][A-Za-z0-9_]*$
+
+# 函数名正则表达式(允许snake_case和camelCase)
+function-rgx=(([a-z][a-z0-9_]{2,50})|([a-z][a-zA-Z0-9]{2,50}))$
+
+# 忽略过长的行(正则表达式)
+ignore-long-lines=^\s*(# )?<?https?://\S+>?$
+
+[IMPORTS]
+# 不检查wildcard导入
+allow-wildcard-with-all=no
+
+[CLASSES]
+# 检查protected成员的访问
+check-protected-access-in-special-methods=no
+
+[EXCEPTIONS]
+# 重新抛出异常的参数名称列表
+overgeneral-exceptions=builtins.Exception 

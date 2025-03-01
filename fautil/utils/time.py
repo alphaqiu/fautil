@@ -51,10 +51,9 @@ def format_datetime(
     # 默认使用ISO 8601格式
     if isinstance(dt, datetime.datetime):
         return dt.isoformat()
-    elif isinstance(dt, datetime.date):
+    if isinstance(dt, datetime.date):
         return dt.isoformat()
-    else:
-        raise TypeError(f"不支持的类型: {type(dt)}")
+    raise TypeError(f"不支持的类型: {type(dt)}")
 
 
 def parse_datetime(
@@ -81,7 +80,7 @@ def parse_datetime(
         try:
             # 尝试ISO格式
             dt = datetime.datetime.fromisoformat(dt_str)
-        except ValueError:
+        except ValueError as exc:
             # 尝试常见格式
             formats = [
                 "%Y-%m-%d %H:%M:%S",
@@ -101,7 +100,7 @@ def parse_datetime(
                 except ValueError:
                     continue
             else:
-                raise ValueError(f"无法解析日期时间字符串: {dt_str}")
+                raise ValueError(f"无法解析日期时间字符串: {dt_str}") from exc
 
     # 根据需要返回日期或日期时间
     if as_date:

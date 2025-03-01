@@ -233,8 +233,8 @@ class RedisCache:
             serialized = self.serialize(value)
             if ttl:
                 return redis.setex(self._make_key(key), ttl, serialized)
-            else:
-                return redis.set(self._make_key(key), serialized)
+
+            return redis.set(self._make_key(key), serialized)
         except Exception as e:
             logger.error(f"序列化缓存值失败: {e}")
             return False
@@ -256,8 +256,8 @@ class RedisCache:
             serialized = self.serialize(value)
             if ttl:
                 return await redis.setex(self._make_key(key), ttl, serialized)
-            else:
-                return await redis.set(self._make_key(key), serialized)
+
+            return await redis.set(self._make_key(key), serialized)
         except Exception as e:
             logger.error(f"序列化缓存值失败: {e}")
             return False

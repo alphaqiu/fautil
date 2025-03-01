@@ -3,6 +3,7 @@
 ![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
 ![FastAPI Version](https://img.shields.io/badge/fastapi-0.110.0%2B-green)
 ![License](https://img.shields.io/badge/license-MIT-blue)
+![Pylint](https://github.com/alphaqiu/fautil/raw/main/pylint_badge.svg)
 
 基于 FastAPI 和 SQLAlchemy 的企业级应用框架，提供完整的生命周期管理、依赖注入、异步支持和优雅关闭机制。
 

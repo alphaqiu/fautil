@@ -43,16 +43,9 @@ FastAPI Utility 基础框架库
 """
 
 import importlib.util
+from typing import Any, Dict, List, Optional, Union
 
-# 使用importlib.util.find_spec检查_version模块是否存在
-if importlib.util.find_spec("fautil._version") is not None:
-    # 当模块确实存在时才导入
-    from ._version import __version__  # type: ignore
-else:
-    # 如果_version.py不存在（例如在开发环境中初次克隆后），使用默认版本
-    __version__ = "0.0.0.dev0"
-
-# 导出主要模块
+# 导入所有子模块
 from fautil import (
     cache,
     cli,
@@ -65,6 +58,17 @@ from fautil import (
     utils,
     web,
 )
+
+# 使用importlib.util.find_spec检查_version模块是否存在
+if importlib.util.find_spec("fautil._version") is not None:
+    # 当模块确实存在时才导入
+    try:
+        from ._version import __version__  # type: ignore
+    except ImportError:
+        __version__ = "0.0.0.dev0"
+else:
+    # 如果_version.py不存在（例如在开发环境中初次克隆后），使用默认版本
+    __version__ = "0.0.0.dev0"
 
 __all__ = [
     "cache",

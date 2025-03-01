@@ -159,7 +159,9 @@ def make_key(args: tuple, kwargs: dict) -> str:
     return ":".join(key_parts)
 
 
-def lru_cache(maxsize: int = 128, ttl: int = 0, key_func: Optional[Callable] = None) -> Callable:
+def lru_cache(
+    maxsize: int = 128, ttl: int = 0, key_func: Optional[Callable] = None
+) -> Callable:
     """LRU缓存装饰器
 
     可用于装饰同步和异步函数，对函数结果进行缓存。
@@ -185,11 +187,11 @@ def lru_cache(maxsize: int = 128, ttl: int = 0, key_func: Optional[Callable] = N
                 # 检查缓存
                 result = cache.get(key)
                 if result is not None:
-                    logger.debug(f"缓存命中: {func.__name__}:{key}")
+                    logger.debug("缓存命中: %s:%s", func.__name__, key)
                     return result
 
                 # 调用函数
-                logger.debug(f"缓存未命中: {func.__name__}:{key}")
+                logger.debug("缓存未命中: %s:%s", func.__name__, key)
                 result = await func(*args, **kwargs)
 
                 # 缓存结果
@@ -197,26 +199,25 @@ def lru_cache(maxsize: int = 128, ttl: int = 0, key_func: Optional[Callable] = N
                 return result
 
             return async_wrapper
-        else:
 
-            @wraps(func)
-            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-                key = key_maker(args, kwargs)
+        @wraps(func)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+            key = key_maker(args, kwargs)
 
-                # 检查缓存
-                result = cache.get(key)
-                if result is not None:
-                    logger.debug(f"缓存命中: {func.__name__}:{key}")
-                    return result
-
-                # 调用函数
-                logger.debug(f"缓存未命中: {func.__name__}:{key}")
-                result = func(*args, **kwargs)
-
-                # 缓存结果
-                cache.set(key, result)
+            # 检查缓存
+            result = cache.get(key)
+            if result is not None:
+                logger.debug("缓存命中: %s:%s", func.__name__, key)
                 return result
 
-            return sync_wrapper
+            # 调用函数
+            logger.debug("缓存未命中: %s:%s", func.__name__, key)
+            result = func(*args, **kwargs)
+
+            # 缓存结果
+            cache.set(key, result)
+            return result
+
+        return sync_wrapper
 
     return decorator
