@@ -7,7 +7,7 @@ plugins:
   - search
 
 # 配置文档目录
-docs_dir: docs
+docs_dir: .
 
 # 配置导航
 nav:

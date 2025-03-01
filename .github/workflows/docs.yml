@@ -38,7 +38,7 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           token: ${{ secrets.WEBSITE }}
-          external_repository: alphaqiu/fautil.github.io
+          repository-name: alphaqiu/fautil.github.io
           branch: gh-page
           folder: site  # MkDocs输出目录
           clean: true
