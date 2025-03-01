@@ -39,11 +39,11 @@ jobs:
           pwd
           ls -la docs/site
 
-      - name: Deploy to GitHub Pages Repo
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Deploy to Github Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.ref == 'refs/heads/master' }}
         with:
-          token: ${{ secrets.WEBSITE }}
-          repository-name: alphaqiu/fautil.github.io
-          branch: gh-page
-          folder: docs/site
-          clean: true
+          personal_token: ${{ secrets.WEBSITE }}
+          publish_dir: ./docs/site
+          external_repository: alphaqiu/fautil.github.io
+          publish_branch: gh-page
