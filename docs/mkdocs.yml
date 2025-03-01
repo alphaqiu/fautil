@@ -8,7 +8,7 @@ plugins:
 
 # 配置文档目录
 docs_dir: docs
-site_dir: ../site
+site_dir: site
 
 # 配置导航
 nav:
