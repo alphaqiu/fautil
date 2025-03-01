@@ -6,10 +6,9 @@
 
 import asyncio
 import signal
-import sys
 import time
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Type, Union
+from typing import Dict, Optional
 
 from injector import inject, singleton
 from loguru import logger
@@ -195,9 +194,7 @@ class ShutdownManager:
             loop.add_signal_handler(
                 signal.SIGINT,
                 lambda: asyncio.create_task(
-                    self.trigger_shutdown(
-                        reason=ShutdownReason.SIGNAL, message="收到SIGINT信号"
-                    )
+                    self.trigger_shutdown(reason=ShutdownReason.SIGNAL, message="收到SIGINT信号")
                 ),
             )
 
@@ -205,9 +202,7 @@ class ShutdownManager:
             loop.add_signal_handler(
                 signal.SIGTERM,
                 lambda: asyncio.create_task(
-                    self.trigger_shutdown(
-                        reason=ShutdownReason.SIGNAL, message="收到SIGTERM信号"
-                    )
+                    self.trigger_shutdown(reason=ShutdownReason.SIGNAL, message="收到SIGTERM信号")
                 ),
             )
 
@@ -319,9 +314,7 @@ class ShutdownManager:
         try:
             # 设置总超时
             try:
-                await asyncio.wait_for(
-                    self._execute_shutdown_phases(), timeout=self._timeout
-                )
+                await asyncio.wait_for(self._execute_shutdown_phases(), timeout=self._timeout)
             except asyncio.TimeoutError:
                 logger.error(f"服务关闭超时（{self._timeout}秒），继续后续处理")
                 self._phase = ShutdownPhase.FAILED
@@ -343,9 +336,7 @@ class ShutdownManager:
         if self._phase == ShutdownPhase.COMPLETED:
             logger.info(f"服务关闭完成，总耗时: {self.shutdown_time:.2f}秒")
         else:
-            logger.warning(
-                f"服务关闭异常，状态: {self._phase}, 耗时: {self.shutdown_time:.2f}秒"
-            )
+            logger.warning(f"服务关闭异常，状态: {self._phase}, 耗时: {self.shutdown_time:.2f}秒")
 
     async def _execute_shutdown_phases(self) -> None:
         """
@@ -383,9 +374,7 @@ class ShutdownManager:
             await self._stop_api_server(timeout)
 
             # 触发HTTP服务器停止后事件
-            await self.lifecycle_manager.trigger_event(
-                LifecycleEventType.POST_HTTP_STOP
-            )
+            await self.lifecycle_manager.trigger_event(LifecycleEventType.POST_HTTP_STOP)
 
         # 触发对应的关闭事件
         await self._trigger_phase_events(phase)
@@ -410,9 +399,7 @@ class ShutdownManager:
         logger.info("正在停止HTTP服务器...")
         try:
             # 创建一个保护的停止任务
-            stop_task = asyncio.create_task(
-                asyncio.shield(self.http_server_manager.stop())
-            )
+            stop_task = asyncio.create_task(asyncio.shield(self.http_server_manager.stop()))
 
             # 等待停止任务完成，带超时控制
             await asyncio.wait_for(stop_task, timeout=timeout)
@@ -422,10 +409,7 @@ class ShutdownManager:
         except asyncio.CancelledError:
             logger.warning("停止HTTP服务器的任务被取消")
             # 即使取消也确保HTTP服务器知道需要关闭
-            if (
-                hasattr(self.http_server_manager, "_server")
-                and self.http_server_manager._server
-            ):
+            if hasattr(self.http_server_manager, "_server") and self.http_server_manager._server:
                 if hasattr(self.http_server_manager._server, "should_exit"):
                     self.http_server_manager._server.should_exit = True
         except Exception as e:
@@ -442,9 +426,7 @@ class ShutdownManager:
             phase: 关闭阶段
         """
         # 获取此阶段应关闭的组件类型
-        component_types = [
-            ct for ct, ph in self._component_phase_mapping.items() if ph == phase
-        ]
+        component_types = [ct for ct, ph in self._component_phase_mapping.items() if ph == phase]
 
         if not component_types:
             logger.warning(f"阶段 {phase} 没有对应的组件类型")

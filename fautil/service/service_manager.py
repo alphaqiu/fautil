@@ -8,10 +8,10 @@
 import asyncio
 import signal
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Union
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from fastapi import FastAPI
-from injector import Inject, Injector, inject, singleton
+from injector import Injector, inject, singleton
 from loguru import logger
 
 from fautil.service.config_manager import ConfigManager
@@ -178,15 +178,11 @@ class ServiceManager:
             健康状态字典
         """
         # 更新状态
-        self._health_status["status"] = (
-            "ok" if self._status == ServiceStatus.RUNNING else "error"
-        )
+        self._health_status["status"] = "ok" if self._status == ServiceStatus.RUNNING else "error"
 
         return self._health_status
 
-    def update_component_health(
-        self, component_name: str, status: Dict[str, Any]
-    ) -> None:
+    def update_component_health(self, component_name: str, status: Dict[str, Any]) -> None:
         """
         更新组件健康状态
 
@@ -270,9 +266,7 @@ class ServiceManager:
 
         # 设置信号处理器
         for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(
-                sig, lambda s=sig: asyncio.create_task(self._handle_signal(s))
-            )
+            loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(self._handle_signal(s)))
 
     async def _handle_signal(self, sig: signal.Signals) -> None:
         """

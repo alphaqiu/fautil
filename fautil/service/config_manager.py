@@ -4,17 +4,12 @@
 负责加载、验证和管理应用配置。支持多环境配置、配置覆盖和动态配置。
 """
 
-import asyncio
-import json
 import os
 import sys
-from functools import lru_cache
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, TypeVar, cast, get_type_hints
+from typing import Optional, Type, TypeVar
 
-from injector import Inject, Injector, Module, singleton
+from injector import singleton
 from loguru import logger
-from pydantic import BaseModel, Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings
 
 from fautil.core.config import Settings
@@ -106,7 +101,12 @@ class ConfigManager:
         # 添加控制台处理器
         logger.add(
             sys.stderr,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+            format=(
+                "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> |"
+                " <level>{level: <8}</level> |"
+                " <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> -"
+                " <level>{message}</level>"
+            ),
             level="INFO",
             colorize=True,
         )

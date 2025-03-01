@@ -5,29 +5,75 @@
 演示改进后的服务生命周期管理和分阶段优雅关闭功能。
 """
 
+# 导入标准库
 import asyncio
 import os
-import random
 import signal
 import sys
 import time
-from typing import Dict, List, Optional
+from typing import Dict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Request
+# 导入第三方库
+from fastapi import APIRouter, BackgroundTasks, FastAPI, HTTPException, Request
 from injector import Binder, Module, inject, singleton
 from loguru import logger
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
 
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from fautil.core.config import Settings
-from fautil.service.api_service import APIService
-from fautil.service.config_manager import ConfigManager
-from fautil.service.discovery_manager import DiscoveryManager
-from fautil.service.injector_manager import InjectorManager
-from fautil.service.lifecycle_manager import (
+def setup_path_and_import():
+    """设置路径并导入项目模块"""
+    # 添加项目根目录到路径
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    sys.path.insert(0, project_root)
+
+    # 导入项目模块并返回它们
+    from fautil.core.config import Settings
+    from fautil.service.api_service import APIService
+    from fautil.service.config_manager import ConfigManager
+    from fautil.service.discovery_manager import DiscoveryManager
+    from fautil.service.injector_manager import InjectorManager
+    from fautil.service.lifecycle_manager import (
+        ComponentType,
+        LifecycleEventType,
+        LifecycleManager,
+        on_event,
+        on_shutdown,
+        on_startup,
+        post_shutdown,
+        pre_startup,
+    )
+    from fautil.service.service_manager import ServiceManager
+    from fautil.service.shutdown_manager import ShutdownManager, ShutdownReason
+    from fautil.web.cbv import APIView
+
+    return (
+        Settings,
+        APIService,
+        ConfigManager,
+        DiscoveryManager,
+        InjectorManager,
+        ComponentType,
+        LifecycleEventType,
+        LifecycleManager,
+        on_event,
+        on_shutdown,
+        on_startup,
+        post_shutdown,
+        pre_startup,
+        ServiceManager,
+        ShutdownManager,
+        ShutdownReason,
+        APIView,
+    )
+
+
+# 导入项目模块
+(
+    Settings,
+    APIService,
+    ConfigManager,
+    DiscoveryManager,
+    InjectorManager,
     ComponentType,
     LifecycleEventType,
     LifecycleManager,
@@ -36,10 +82,15 @@ from fautil.service.lifecycle_manager import (
     on_startup,
     post_shutdown,
     pre_startup,
-)
-from fautil.service.service_manager import ServiceManager
-from fautil.service.shutdown_manager import ShutdownManager, ShutdownReason
-from fautil.web.cbv import APIView
+    ServiceManager,
+    ShutdownManager,
+    ShutdownReason,
+    APIView,
+) = setup_path_and_import()
+
+# 全局变量定义
+ACTIVE_TASKS = {}  # 活跃任务映射
+CANCELLED_TASKS = set()  # 已取消任务集合
 
 
 # 演示配置类

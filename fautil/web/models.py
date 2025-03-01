@@ -7,7 +7,7 @@ API模型模块
 - 错误详情模型
 """
 
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -35,9 +35,7 @@ class ApiResponse(BaseModel, Generic[T]):
     model_config = ConfigDict(populate_by_name=True)
 
     success: bool = Field(default=True, description="请求是否成功")
-    data: Optional[T] = Field(
-        default=None, description="响应数据，仅在success=True时存在"
-    )
+    data: Optional[T] = Field(default=None, description="响应数据，仅在success=True时存在")
     error: Optional[Dict[str, Any]] = Field(
         default=None, description="错误信息，仅在success=False时存在"
     )
@@ -101,9 +99,7 @@ class PaginatedData(BaseModel, Generic[DataT]):
     pages: int = Field(description="总页数")
 
     @classmethod
-    def create(
-        cls, items: List[DataT], total: int, page: int, size: int
-    ) -> "PaginatedData[DataT]":
+    def create(cls, items: List[DataT], total: int, page: int, size: int) -> "PaginatedData[DataT]":
         """
         创建分页数据实例
 

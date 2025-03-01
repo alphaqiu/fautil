@@ -7,12 +7,12 @@
 
 import logging
 import traceback
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import List, Optional
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
 from fautil.web.context import RequestContext
@@ -327,9 +327,7 @@ async def pydantic_validation_exception_handler(
     )
 
 
-async def sqlalchemy_exception_handler(
-    request: Request, exc: SQLAlchemyError
-) -> JSONResponse:
+async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
     """
     SQLAlchemy异常处理器
 

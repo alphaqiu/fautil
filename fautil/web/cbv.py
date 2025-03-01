@@ -14,12 +14,10 @@ from typing import (
     Set,
     Type,
     TypeVar,
-    Union,
-    cast,
 )
 
 from fastapi import APIRouter, FastAPI, params
-from injector import Inject, Injector, inject
+from injector import Injector
 from loguru import logger
 
 T = TypeVar("T", bound="APIView")
@@ -113,9 +111,7 @@ class route:
         return func
 
 
-def api_route(
-    path: str, **kwargs: Any
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def api_route(path: str, **kwargs: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     路由装饰器
 
@@ -181,12 +177,8 @@ class APIView:
                         "methods": route_info.methods,
                         "operation_id": route_info.operation_id,
                         "include_in_schema": route_info.include_in_schema,
-                        "response_model_exclude_none": (
-                            route_info.response_model_exclude_none
-                        ),
-                        "response_model_exclude_unset": (
-                            route_info.response_model_exclude_unset
-                        ),
+                        "response_model_exclude_none": (route_info.response_model_exclude_none),
+                        "response_model_exclude_unset": (route_info.response_model_exclude_unset),
                         "response_model_exclude_defaults": (
                             route_info.response_model_exclude_defaults
                         ),
@@ -231,9 +223,7 @@ class APIView:
         """
         for route_info in self.__class__._routes:
             # 创建路由处理函数
-            def create_endpoint(
-                route_info: Dict[str, Any], instance: Any
-            ) -> Callable[..., Any]:
+            def create_endpoint(route_info: Dict[str, Any], instance: Any) -> Callable[..., Any]:
                 async def endpoint(*args: Any, **kwargs: Any) -> Any:
                     # 调用对应的方法
                     return await route_info["endpoint"](instance, *args, **kwargs)
@@ -271,18 +261,14 @@ class APIView:
                 include_in_schema=route_info["include_in_schema"],
                 response_model_exclude_none=route_info["response_model_exclude_none"],
                 response_model_exclude_unset=route_info["response_model_exclude_unset"],
-                response_model_exclude_defaults=route_info[
-                    "response_model_exclude_defaults"
-                ],
+                response_model_exclude_defaults=route_info["response_model_exclude_defaults"],
                 response_model_exclude=route_info["response_model_exclude"],
                 response_model_include=route_info["response_model_include"],
                 name=route_info["name"],
             )
 
             route_path = route_info["path"]
-            logger.debug(
-                f"已注册路由 {route_path} -> {route_info['endpoint'].__name__}"
-            )
+            logger.debug(f"已注册路由 {route_path} -> {route_info['endpoint'].__name__}")
 
     @classmethod
     def setup(

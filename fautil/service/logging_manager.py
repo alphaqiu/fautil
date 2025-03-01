@@ -5,14 +5,10 @@
 支持将日志输出到控制台、文件和远程服务。
 """
 
-import asyncio
-import os
 import sys
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
 
-from injector import Inject, singleton
+from injector import singleton
 from loguru import logger
 
 from fautil.core.config import Settings
@@ -83,7 +79,12 @@ class LoggingManager:
         # 添加控制台处理器
         handler_id = logger.add(
             sys.stderr,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+            format=(
+                "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> |"
+                " <level>{level: <8}</level> |"
+                " <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> -"
+                " <level>{message}</level>"
+            ),
             level=log_level,
             colorize=True,
         )
@@ -111,7 +112,11 @@ class LoggingManager:
             str(log_file),
             rotation="00:00",  # 每天午夜轮换
             retention=f"{log_retention} days",
-            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
+            format=(
+                "{time:YYYY-MM-DD HH:mm:ss.SSS} |"
+                " {level: <8} |"
+                " {name}:{function}:{line} - {message}"
+            ),
             level=log_level,
             compression="zip",  # 压缩旧日志
         )
@@ -124,7 +129,11 @@ class LoggingManager:
             str(error_log_file),
             rotation="00:00",
             retention=f"{log_retention} days",
-            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
+            format=(
+                "{time:YYYY-MM-DD HH:mm:ss.SSS} |"
+                " {level: <8} |"
+                " {name}:{function}:{line} - {message}"
+            ),
             level="ERROR",
             compression="zip",
             filter=lambda record: record["level"].name == "ERROR"

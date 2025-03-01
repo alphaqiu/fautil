@@ -7,7 +7,7 @@
 
 import time
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set
 
 from fastapi import FastAPI, Request, Response
 from prometheus_client import (
@@ -22,8 +22,6 @@ from prometheus_client.exposition import generate_latest
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response as StarletteResponse
 from starlette.types import ASGIApp
-
-from fautil.web.context import RequestContext
 
 
 class MetricType(str, Enum):
@@ -137,9 +135,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             ],
         )
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # 如果路径在排除列表中，直接处理请求
         if request.url.path in self.exclude_paths:
             return await call_next(request)
@@ -149,9 +145,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         path = request.scope.get("path_params", {}).get("path", request.url.path)
 
         # 记录请求开始
-        self.requests_total.labels(
-            method=method, path=path, app_name=self.app_name
-        ).inc()
+        self.requests_total.labels(method=method, path=path, app_name=self.app_name).inc()
 
         # 增加处理中请求计数
         in_progress = self.requests_in_progress.labels(
@@ -163,9 +157,9 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         try:
             content_length = request.headers.get("content-length")
             if content_length:
-                self.request_size.labels(
-                    method=method, path=path, app_name=self.app_name
-                ).observe(int(content_length))
+                self.request_size.labels(method=method, path=path, app_name=self.app_name).observe(
+                    int(content_length)
+                )
         except Exception:
             pass
 
@@ -206,9 +200,9 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         finally:
             # 记录请求持续时间
             request_duration = time.time() - start_time
-            self.requests_duration.labels(
-                method=method, path=path, app_name=self.app_name
-            ).observe(request_duration)
+            self.requests_duration.labels(method=method, path=path, app_name=self.app_name).observe(
+                request_duration
+            )
 
             # 减少处理中请求计数
             in_progress.dec()
@@ -355,9 +349,7 @@ class MetricsManager:
         else:
             counter.inc(value)
 
-    def set_gauge(
-        self, name: str, value: float, labels: Optional[Dict[str, str]] = None
-    ) -> None:
+    def set_gauge(self, name: str, value: float, labels: Optional[Dict[str, str]] = None) -> None:
         """
         设置仪表盘值
 

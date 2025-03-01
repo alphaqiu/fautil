@@ -8,27 +8,17 @@
 import importlib
 import inspect
 import pkgutil
-import sys
-from abc import ABCMeta, abstractmethod
-from importlib import util as importlib_util
-from pathlib import Path
 from types import ModuleType
 from typing import (
-    Any,
-    Callable,
     Dict,
-    List,
     Optional,
     Set,
-    Tuple,
     Type,
     TypeVar,
-    Union,
-    cast,
 )
 
-from fastapi import APIRouter, FastAPI
-from injector import Inject, Injector, Module, singleton
+from fastapi import FastAPI
+from injector import Injector, Module, singleton
 from loguru import logger
 from pydantic import BaseModel
 
@@ -96,9 +86,7 @@ class DiscoveryManager:
             self._scanned_packages.add(package_name)
 
             # 记录发现的组件数量
-            total_components = sum(
-                len(components) for components in self._components.values()
-            )
+            total_components = sum(len(components) for components in self._components.values())
             logger.info(f"发现组件总数: {total_components}")
 
             for component_type, components in self._components.items():
@@ -142,9 +130,7 @@ class DiscoveryManager:
         if modules:
             self._register_modules(injector, modules)
 
-    def _discover_package(
-        self, package: ModuleType, include_subpackages: bool = True
-    ) -> None:
+    def _discover_package(self, package: ModuleType, include_subpackages: bool = True) -> None:
         """
         发现包中的组件
 
@@ -300,9 +286,7 @@ class DiscoveryManager:
         # 检查是否继承自Module
         return inspect.isclass(cls) and issubclass(cls, Module) and cls != Module
 
-    def _register_views(
-        self, app: FastAPI, injector: Injector, views: Set[Type[APIView]]
-    ) -> None:
+    def _register_views(self, app: FastAPI, injector: Injector, views: Set[Type[APIView]]) -> None:
         """
         注册视图
 
@@ -335,7 +319,8 @@ class DiscoveryManager:
         for module_cls in modules:
             try:
                 # 获取模块实例
-                module_instance = injector.get(module_cls)
+                # module_instance = injector.get(module_cls)
+                _ = injector.get(module_cls)
 
                 # 注册到注入器（由InjectorManager处理）
                 logger.debug(f"已发现模块: {module_cls.__name__}")

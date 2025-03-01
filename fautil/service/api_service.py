@@ -7,23 +7,15 @@ API服务核心模块
 
 import asyncio
 import atexit
-import os
-import signal
-import sys
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Callable, Dict, List, Optional, Set, Type, TypeVar, cast
+from typing import Any, Dict, List, Optional, Set, Type
 
-import uvicorn
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from injector import (
     Binder,
     Injector,
     Module,
-    Provider,
-    Scope,
-    get_bindings,
-    inject,
     singleton,
 )
 from loguru import logger
@@ -34,14 +26,8 @@ from fautil.service.discovery_manager import DiscoveryManager
 from fautil.service.http_server_manager import HTTPServerManager
 from fautil.service.injector_manager import DiscoveryModule, InjectorManager
 from fautil.service.lifecycle_manager import (
-    ComponentType,
     LifecycleEventType,
     LifecycleManager,
-    on_event,
-    on_shutdown,
-    on_startup,
-    post_shutdown,
-    pre_startup,
 )
 from fautil.service.logging_manager import LoggingManager
 from fautil.service.service_manager import ServiceManager
@@ -107,7 +93,7 @@ class ServiceModule(Module):
         try:
             binder.injector.get(cls)
             return True
-        except:
+        except Exception:
             return False
 
 
@@ -203,9 +189,7 @@ class APIService:
             service_manager = self._injector.get(ServiceManager)
 
             # 触发服务启动前事件
-            await service_manager.lifecycle_manager.trigger_event(
-                LifecycleEventType.PRE_STARTUP
-            )
+            await service_manager.lifecycle_manager.trigger_event(LifecycleEventType.PRE_STARTUP)
 
             # 获取HTTP服务器管理器
             http_server_manager = self._injector.get(HTTPServerManager)
@@ -228,9 +212,7 @@ class APIService:
             atexit.register(self._run_atexit_handler)
 
             # 触发HTTP服务器启动前事件
-            await service_manager.lifecycle_manager.trigger_event(
-                LifecycleEventType.PRE_HTTP_START
-            )
+            await service_manager.lifecycle_manager.trigger_event(LifecycleEventType.PRE_HTTP_START)
 
             # 启动HTTP服务器
             logger.info(f"正在启动API服务 - 地址: {host}:{port}")
@@ -246,9 +228,7 @@ class APIService:
             )
 
             # 触发服务启动后事件
-            await service_manager.lifecycle_manager.trigger_event(
-                LifecycleEventType.POST_STARTUP
-            )
+            await service_manager.lifecycle_manager.trigger_event(LifecycleEventType.POST_STARTUP)
 
             # 如果是阻塞模式，等待服务器的serve任务完成
             if block and http_server_manager._serve_task:
@@ -385,9 +365,7 @@ class APIService:
             if self._injector and hasattr(self._injector, "get"):
                 try:
                     lifecycle_manager = self._injector.get(LifecycleManager)
-                    await lifecycle_manager.trigger_event(
-                        LifecycleEventType.PRE_STARTUP
-                    )
+                    await lifecycle_manager.trigger_event(LifecycleEventType.PRE_STARTUP)
                 except Exception as e:
                     logger.error(f"触发应用启动前事件时出错: {str(e)}")
 
@@ -401,9 +379,7 @@ class APIService:
                 try:
                     # 触发HTTP服务器关闭前事件
                     lifecycle_manager = self._injector.get(LifecycleManager)
-                    await lifecycle_manager.trigger_event(
-                        LifecycleEventType.PRE_HTTP_STOP
-                    )
+                    await lifecycle_manager.trigger_event(LifecycleEventType.PRE_HTTP_STOP)
 
                     # 等待所有请求处理完成
                     http_server_manager = self._injector.get(HTTPServerManager)
@@ -414,9 +390,7 @@ class APIService:
                         await asyncio.sleep(1.0)  # 给请求一些时间完成
 
                     # 触发关闭后事件
-                    await lifecycle_manager.trigger_event(
-                        LifecycleEventType.POST_HTTP_STOP
-                    )
+                    await lifecycle_manager.trigger_event(LifecycleEventType.POST_HTTP_STOP)
                     logger.info("lifespan关闭流程完成")
                 except Exception as e:
                     logger.error(f"lifespan关闭流程中出错: {str(e)}")

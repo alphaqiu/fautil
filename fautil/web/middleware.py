@@ -8,13 +8,11 @@
 import logging
 import time
 import uuid
-from typing import Callable, Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.routing import APIRoute
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import JSONResponse
 
 from fautil.web.context import RequestContext, RequestTimer, get_client_ip
 
@@ -39,9 +37,7 @@ class TracingMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.header_name = header_name
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # 初始化请求ID：从请求头获取或生成新的
         request_id = request.headers.get(self.header_name, str(uuid.uuid4()))
 
@@ -81,13 +77,9 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.header_name = header_name
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # 初始化请求ID：从请求头获取或生成新的
-        request_id = request.headers.get(
-            self.header_name, RequestContext.generate_request_id()
-        )
+        request_id = request.headers.get(self.header_name, RequestContext.generate_request_id())
 
         # 设置请求ID
         RequestContext.set_request_id(request_id)
@@ -129,9 +121,7 @@ class RequestTrackingMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.active_requests: Dict[str, Request] = {}
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # 生成请求ID
         request_id = f"{time.time()}-{id(request)}"
 
@@ -177,9 +167,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         self.exclude_paths = exclude_paths or {"/health", "/metrics"}
         self.log_request_body = log_request_body
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # 如果路径在排除列表中，直接处理请求
         path = request.url.path
         if path in self.exclude_paths:
@@ -187,15 +175,13 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         # 获取请求信息
         method = request.method
-        path_with_query = str(request.url)
+        # str(request.url)
         client_ip = get_client_ip(request)
         request_id = RequestContext.get_request_id()
 
         # 日志开始记录
         start_time = time.time()
-        logger.info(
-            f"开始处理请求 | {method} {path} | Client: {client_ip} | ID: {request_id}"
-        )
+        logger.info(f"开始处理请求 | {method} {path} | Client: {client_ip} | ID: {request_id}")
 
         # 可选：记录请求体
         if self.log_request_body and method in ("POST", "PUT", "PATCH"):

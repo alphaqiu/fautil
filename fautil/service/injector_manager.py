@@ -5,8 +5,6 @@
 支持动态注册和自动发现的组件绑定。
 """
 
-import inspect
-import sys
 from typing import (
     Any,
     Callable,
@@ -16,8 +14,6 @@ from typing import (
     Set,
     Type,
     TypeVar,
-    cast,
-    get_type_hints,
 )
 
 from injector import (
@@ -25,7 +21,6 @@ from injector import (
     Injector,
     Module,
     Provider,
-    Scope,
     ScopeDecorator,
     singleton,
 )
@@ -252,13 +247,8 @@ class InjectorManager:
                 binder.bind(InjectorManager, to=injector_manager, scope=singleton)
 
                 # 绑定发现管理器（如果需要）
-                if not any(
-                    isinstance(mod, DiscoveryModule)
-                    for mod in injector_manager._modules
-                ):
-                    binder.bind(
-                        DiscoveryManager, to=DiscoveryManager(), scope=singleton
-                    )
+                if not any(isinstance(mod, DiscoveryModule) for mod in injector_manager._modules):
+                    binder.bind(DiscoveryManager, to=DiscoveryManager(), scope=singleton)
 
         return InjectorModule()
 

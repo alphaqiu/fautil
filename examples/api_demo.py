@@ -11,13 +11,11 @@ API应用示例
 """
 
 import asyncio
-import logging
-import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import Depends, FastAPI, Query
+from fastapi import FastAPI, Query
 from injector import inject, singleton
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -25,17 +23,16 @@ from pydantic import BaseModel, Field
 # 确保能导入fautil包
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from fautil.service.api_service import APIService
-from fautil.service.injector_manager import Module
-from fautil.web.cbv import APIView
-from fautil.web.context import RequestContext
-from fautil.web.exception_handlers import (
-    BadRequestException,
+from fautil.service.api_service import APIService  # noqa: E402
+from fautil.service.injector_manager import Module  # noqa: E402
+from fautil.web.cbv import APIView  # noqa: E402
+from fautil.web.context import RequestContext  # noqa: E402
+from fautil.web.exception_handlers import (  # noqa: E402
     NotFoundException,
     ValidationException,
 )
-from fautil.web.metrics import MetricsManager
-from fautil.web.models import (
+from fautil.web.metrics import MetricsManager  # noqa: E402
+from fautil.web.models import (  # noqa: E402
     PaginatedData,
     create_paginated_response_model,
     create_response_model,
@@ -99,9 +96,7 @@ class ItemService:
             NotFoundException: 如果项目不存在
         """
         if item_id not in self.items:
-            logger.warning(
-                f"项目不存在: {item_id} - 请求ID: {RequestContext.get_request_id()}"
-            )
+            logger.warning(f"项目不存在: {item_id} - 请求ID: {RequestContext.get_request_id()}")
             raise NotFoundException(f"项目 {item_id} 不存在")
 
         logger.info(f"获取项目: {item_id} - 请求ID: {RequestContext.get_request_id()}")
@@ -133,7 +128,8 @@ class ItemService:
         items = filtered_items[start:end]
 
         logger.info(
-            f"列出项目: page={page}, size={size}, tag={tag}, total={total} - 请求ID: {RequestContext.get_request_id()}"
+            f"列出项目: page={page}, size={size}, tag={tag}, "
+            f"total={total} - 请求ID: {RequestContext.get_request_id()}"
         )
 
         # 返回分页数据
@@ -236,9 +232,7 @@ class ItemView(APIView):
         self.metrics = metrics
 
         # 创建指标
-        self.metrics.create_counter(
-            "item_views_total", "项目视图访问次数", ["method", "path"]
-        )
+        self.metrics.create_counter("item_views_total", "项目视图访问次数", ["method", "path"])
 
     @classmethod
     def register_routes(cls, app: FastAPI, view_instance: "ItemView") -> None:
@@ -342,7 +336,8 @@ class ItemView(APIView):
         items = filtered_items[start:end]
 
         logger.info(
-            f"搜索项目: q={q}, page={page}, size={size}, total={total} - 请求ID: {RequestContext.get_request_id()}"
+            f"搜索项目: q={q}, page={page}, size={size}, "
+            f"total={total} - 请求ID: {RequestContext.get_request_id()}"
         )
 
         # 返回分页数据

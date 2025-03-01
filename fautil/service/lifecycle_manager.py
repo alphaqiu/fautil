@@ -5,9 +5,8 @@
 """
 
 import asyncio
-import inspect
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional
 
 from injector import inject, singleton
 from loguru import logger
@@ -160,9 +159,7 @@ class LifecycleManager:
                 LifecycleEventType.PRE_HTTP_START,
                 LifecycleEventType.POST_HTTP_START,
             ):
-                priority = 100 - self._component_shutdown_priority.get(
-                    component_type, 50
-                )
+                priority = 100 - self._component_shutdown_priority.get(component_type, 50)
             # 对于关闭事件，使用组件优先级
             else:
                 priority = self._component_shutdown_priority.get(component_type, 50)
@@ -210,9 +207,7 @@ class LifecycleManager:
                 priority=priority,
             )
 
-    def unregister_event_listener(
-        self, event_type: LifecycleEventType, callback: Callable
-    ) -> bool:
+    def unregister_event_listener(self, event_type: LifecycleEventType, callback: Callable) -> bool:
         """
         取消注册事件监听器
 
@@ -230,9 +225,7 @@ class LifecycleManager:
         callback_id = id(callback)
 
         # 过滤掉要删除的监听器
-        new_listeners = [
-            listener for listener in listeners if listener.id != callback_id
-        ]
+        new_listeners = [listener for listener in listeners if listener.id != callback_id]
 
         # 检查是否有变化
         if len(new_listeners) == len(listeners):
@@ -260,9 +253,7 @@ class LifecycleManager:
         for event_type in LifecycleEventType:
             # 过滤掉要删除的监听器
             listeners = self._listeners[event_type]
-            new_listeners = [
-                listener for listener in listeners if listener.id != callback_id
-            ]
+            new_listeners = [listener for listener in listeners if listener.id != callback_id]
 
             # 检查是否有变化
             if len(new_listeners) != len(listeners):
@@ -271,9 +262,7 @@ class LifecycleManager:
 
         return count
 
-    async def trigger_event(
-        self, event_type: LifecycleEventType, context: Any = None
-    ) -> None:
+    async def trigger_event(self, event_type: LifecycleEventType, context: Any = None) -> None:
         """
         触发事件
 

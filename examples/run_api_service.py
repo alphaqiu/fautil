@@ -12,10 +12,10 @@ from pathlib import Path
 # 将项目根目录添加到模块搜索路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from injector import Binder, Module, singleton
+from injector import Binder, Module  # noqa: E402
 
-from fautil.service import APIService
-from fautil.web.cbv import APIView, api_route
+from fautil.service import APIService  # noqa: E402
+from fautil.web.cbv import APIView, api_route  # noqa: E402
 
 
 # 定义示例视图
@@ -55,7 +55,7 @@ async def main():
     )
 
     # 创建应用并注册视图
-    app = service._create_app()
+    service._create_app()
     service.register_view(ExampleView)
 
     try:

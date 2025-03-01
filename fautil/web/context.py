@@ -5,8 +5,6 @@
 支持在请求处理过程中在不同组件间共享上下文信息。
 """
 
-import asyncio
-import contextvars
 import time
 import uuid
 from contextvars import ContextVar

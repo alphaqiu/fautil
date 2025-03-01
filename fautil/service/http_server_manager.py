@@ -8,7 +8,7 @@ HTTP服务器管理模块
 import asyncio
 import time
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
+from typing import Any, Callable, Dict, Optional
 
 import uvicorn
 from fastapi import FastAPI, Request, Response
@@ -16,7 +16,6 @@ from injector import inject, singleton
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from fautil.core.config import Settings
 from fautil.service.config_manager import ConfigManager
 
 
@@ -111,9 +110,7 @@ class HTTPServerManager:
 
         # 请求队列信息
         self._request_queue_size = 0
-        self._max_request_queue_size = getattr(
-            self.settings, "MAX_REQUEST_QUEUE_SIZE", 100
-        )
+        self._max_request_queue_size = getattr(self.settings, "MAX_REQUEST_QUEUE_SIZE", 100)
 
         # 关闭控制
         self._shutdown_event = asyncio.Event()
@@ -206,9 +203,7 @@ class HTTPServerManager:
         log_level = log_level or getattr(self.settings, "LOG_LEVEL", "info")
         ssl_certfile = ssl_certfile or getattr(self.settings, "SSL_CERTFILE", None)
         ssl_keyfile = ssl_keyfile or getattr(self.settings, "SSL_KEYFILE", None)
-        timeout_keep_alive = timeout_keep_alive or getattr(
-            self.settings, "TIMEOUT_KEEP_ALIVE", 5
-        )
+        timeout_keep_alive = timeout_keep_alive or getattr(self.settings, "TIMEOUT_KEEP_ALIVE", 5)
 
         # 创建服务器配置
         config = {
@@ -256,8 +251,7 @@ class HTTPServerManager:
         try:
             # 启动服务器 - 改为使用asyncio.create_task
             logger.info(
-                f"启动HTTP服务器 - "
-                f"地址: {self._server_config.host}:{self._server_config.port}"
+                f"启动HTTP服务器 - " f"地址: {self._server_config.host}:{self._server_config.port}"
             )
 
             # 创建服务器任务
@@ -298,10 +292,7 @@ class HTTPServerManager:
                     self._server.should_exit = True
 
                 # 新增: 如果有lifespan处理，确保完成lifespan关闭流程
-                if (
-                    hasattr(self._server, "lifespan")
-                    and self._server.lifespan is not None
-                ):
+                if hasattr(self._server, "lifespan") and self._server.lifespan is not None:
                     try:
                         # 等待lifespan关闭事件完成
                         logger.info("等待lifespan关闭事件完成...")
@@ -325,9 +316,7 @@ class HTTPServerManager:
                 # 等待服务器任务完成
                 try:
                     # 给服务器一个合理的时间来完成关闭
-                    await asyncio.wait_for(
-                        asyncio.shield(self._serve_task), timeout=5.0
-                    )
+                    await asyncio.wait_for(asyncio.shield(self._serve_task), timeout=5.0)
                 except asyncio.TimeoutError:
                     logger.warning("等待服务器任务完成超时，尝试取消任务")
                     self._serve_task.cancel()
@@ -385,10 +374,7 @@ class HTTPServerManager:
             info["workers"] = self._server_config.workers
 
             # 添加SSL信息
-            if (
-                hasattr(self._server_config, "ssl_certfile")
-                and self._server_config.ssl_certfile
-            ):
+            if hasattr(self._server_config, "ssl_certfile") and self._server_config.ssl_certfile:
                 info["ssl_enabled"] = True
 
         return info

@@ -5,20 +5,31 @@
 演示使用组件自动发现和依赖注入功能启动服务。
 """
 
+# 导入标准库
 import asyncio
 import os
 import sys
 from pathlib import Path
 
-# 添加项目根目录到路径
-ROOT_DIR = Path(__file__).parent.parent
-sys.path.insert(0, str(ROOT_DIR))
-
-from fastapi import FastAPI
-from injector import Module, singleton
+# 导入第三方库
+from injector import Module
 from loguru import logger
 
-from fautil.service import APIService, ServiceManager
+
+def setup_path_and_import():
+    """设置路径并导入项目模块"""
+    # 添加项目根目录到路径
+    ROOT_DIR = Path(__file__).parent.parent
+    sys.path.insert(0, str(ROOT_DIR))
+
+    # 导入项目模块并返回
+    from fautil.service import APIService, ServiceManager
+
+    return APIService, ServiceManager
+
+
+# 导入项目模块
+APIService, ServiceManager = setup_path_and_import()
 
 
 class DemoModule(Module):
